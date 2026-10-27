@@ -184,6 +184,7 @@ class Builder:
         doc_id, company = src["doc_id"], src["company"]
         section = ""
         recent: list[tuple[int, str]] = []  # (page, text) of the last text items, for table context
+        last_table: tuple[str, int] | None = None  # (element_id, page) of the table whose footnotes may follow
         texts_by_ref = {t["self_ref"]: t for t in doc["texts"]}
         passages = Passages(self.con, doc_id, company)
         for seq, (kind, item) in enumerate(walk(doc)):
@@ -200,6 +201,14 @@ class Builder:
                 if label == "section_header":
                     section = text
                     passages.flush()
+                if last_table and last_table[1] == page_no and text[:1] in "*#†‡^":
+                    # a footnote right under a table defines its figures ('* Voluntary attrition for IT services')
+                    note = f" | Note: {text}"
+                    self.con.execute("UPDATE elements SET text = text || ? WHERE element_id = ?", (note, last_table[0]))
+                    self.con.execute("UPDATE passages SET text = text || ? WHERE element_id = ? AND kind = 'table'",
+                                     (note, last_table[0]))
+                elif label != "footnote":
+                    last_table = None
                 recent = (recent + [(page_no, text)])[-3:]
                 if label in TEXT_KINDS and text and pages[page_no]["quality"] != "letter_spaced":
                     passages.add(page_no, section, text, element_id, bullet=label == "list_item")
@@ -213,6 +222,7 @@ class Builder:
                 text = context
                 extra = json.dumps({"rows": item["data"]["num_rows"], "cols": item["data"]["num_cols"]})
                 self.add_table(src, item, element_id, page_no, section, context, pages[page_no], passages)
+                last_table = (element_id, page_no)
             else:  # pictures
                 classes = (item.get("meta") or {}).get("classification", {}).get("predictions") or []
                 best = max(classes, key=lambda c: c["confidence"], default=None)

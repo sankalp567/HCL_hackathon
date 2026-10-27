@@ -111,7 +111,10 @@ def lookup_facts(conn: sqlite3.Connection, companies: list[str], metric: str | N
         return []
     marks = ",".join("?" * len(companies))
     rows = conn.execute(
-        f"""SELECT f.*, d.title, d.file FROM best_facts f JOIN documents d ON d.doc_id = f.doc_id
+        f"""SELECT f.*, d.title, d.file, e.text AS context, m.label AS metric_label
+            FROM best_facts f JOIN documents d ON d.doc_id = f.doc_id
+            LEFT JOIN elements e ON e.element_id = f.element_id
+            LEFT JOIN metric_dictionary m ON m.metric = f.metric
             WHERE f.metric = ? AND f.company IN ({marks})""" + (" AND f.fy = ?" if fy else ""),
         (metric, *companies, *([fy] if fy else [])),
     ).fetchall()
@@ -125,11 +128,27 @@ def lookup_facts(conn: sqlite3.Connection, companies: list[str], metric: str | N
 
 
 def _fact_text(f: dict) -> str:
-    return f"{f['company']} {f['metric'].replace('_', ' ')} {f['fy']} ({f['unit']}, {f['basis']}): {f['quote']}"
+    """What the model reads for a fact: our metric name, the report's own wording, and the table's heading and notes
+    (e.g. Infosys's 'Turnover rate*' table whose footnote says '* Voluntary attrition for IT services')."""
+    label = f.get("metric_label") or f["metric"].replace("_", " ")
+    basis = f"{f['basis']}, " if f["basis"] != "unknown" else ""
+    text = f"{f['company']} · {label} · {f['fy']} ({basis}{f['unit']}). As printed: {f['quote']}"
+    if f.get("source_kind") == "table" and f.get("context"):
+        # only the table's title and its notes: other context lines (e.g. a previous table's footnote) mislead a
+        # small model, and a clipped note was why it refused the Infosys attrition question
+        parts = [" ".join(p.split()) for p in f["context"].split(" | ")]
+        notes = [p for p in parts if p.startswith("Note:")]
+        text += f". Table: {parts[0][:160]}" + "".join(f". {n[:240]}" for n in notes)
+    return text
 
 
-def build_sources(conn: sqlite3.Connection, question: str) -> tuple[Understood, list[dict]]:
+def build_sources(conn: sqlite3.Connection, question: str,
+                  companies: list[str] | None = None) -> tuple[Understood, list[dict]]:
+    """companies: the UI's company toggle, used only when the question itself names no company."""
     understood = understand(question)
+    scope = [c for c in COMPANIES if c in (companies or [])]
+    if scope and not understood.named:
+        understood.companies = scope
     facts = lookup_facts(conn, understood.companies, understood.metric, understood.fy)
     passages = search_passages(conn, question, understood.companies)
     sources: list[dict] = []
