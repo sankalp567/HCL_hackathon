@@ -114,10 +114,10 @@ Only these three reports are used; no news, broker notes or websites.
 
 | Member | Roll no. | Contribution (three sentences) |
 |---|---|---|
-| Balbir Prasad | 25210034 | TODO |
-| Sankalp Turankar | 25210115 | TODO |
-| Karthik | 23110070 | TODO |
-| Avinash | 23110123 | TODO |
+| Balbir Prasad | 25210034 | **Local LLM hosting and optimization.** Set up and optimized the locally hosted LLM for natural-language question understanding and answer generation. Worked on inference configuration, model performance, and structured outputs to support the application's RAG pipeline. Contributed to integrating LLM capabilities while balancing response quality, latency, and local resource constraints. |
+| Karthik | 23110070 | **Document parsing, chunking, and vector database.** Implemented annual-report processing using Docling, extracting document text, tables, and relevant source-page information. Developed structure-aware chunking and generated Qwen3-Embedding-0.6B embeddings for storage in ChromaDB. Prepared the document retrieval infrastructure to support semantic search and evidence-grounded answers across TCS, Infosys, and HCLTech annual reports. |
+| Avinash | 23110123 | **Frontend and testing.** Developed the frontend experience for interacting with annual-report intelligence and comparing company information. Worked on the chatbot interface, static company comparison dashboard, dynamic visualizations, and citation-based evidence inspection. Created test cases to evaluate answer correctness, source citations, numerical comparisons, and safe-refusal behavior. |
+| Sankalp Turankar | 25210115 | **Retrieval, reranking, and evaluation.** Implemented a modular retrieval pipeline incorporating query analysis, BM25 search, metadata filtering, Reciprocal Rank Fusion (RRF), and reranking. Developed evidence assembly, multi-company retrieval, source-provenance preservation, failure handling, and automated tests for retrieval quality. Built a benchmark framework to compare retrieval configurations using Recall@K, MRR, nDCG, source-page accuracy, and latency, while preparing integration with the real ChromaDB index. |
 
 ## Use of AI assistants
 
