@@ -197,4 +197,30 @@ def test_metrics_health_and_frontend(settings):
     facts = client.get("/api/metrics?metric=attrition").json()["facts"]
     assert facts[0]["company"] == "Infosys" and facts[0]["page_no"] == 1
     assert client.get("/api/health").json()["facts"] == 1
-    assert "IT Annual Reports" in client.get("/").text
+    home = client.get("/")
+    assert home.status_code == 200 and "annual report" in home.text.lower()
+
+
+def test_overview_facts_evidence_and_search(settings):
+    client = TestClient(create_app(settings))
+    overview = client.get("/api/overview").json()
+    assert overview["companies"] == ["TCS", "Infosys", "HCLTech"] and overview["years"] == ["FY2025-26"]
+    facts = client.get("/api/facts?company=Infosys").json()["facts"]
+    assert facts[0]["is_best"] is True and facts[0]["bbox"] == [72, 60, 300, 76]
+    card = client.get(f"/api/evidence?fact_id={facts[0]['fact_id']}").json()
+    assert card["page"] == 1 and card["pdf"] == "Infosys_FY2025-26.pdf" and "14.1" in card["quote"]
+    assert client.get("/api/evidence").status_code == 400
+    assert client.get("/api/evidence?fact_id=999").status_code == 404
+    results = client.get("/api/search?q=voluntary attrition").json()["results"]
+    assert results[0]["company"] == "Infosys" and "[" in results[0]["snippet"]
+    passage = client.get(f"/api/evidence?passage_id={results[0]['passage_id']}").json()
+    assert passage["kind"] == "text" and passage["table"] is None
+
+
+def test_company_toggle_scopes_only_questions_without_a_company(settings):
+    client = TestClient(create_app(settings))
+    scoped = client.post("/api/ask", json={"question": "What was voluntary attrition in FY2025-26?",
+                                           "companies": ["Infosys"]})
+    assert events_of(scoped)[0][1]["understood"]["companies"] == ["Infosys"]
+    named = client.post("/api/ask", json={"question": "What was TCS revenue?", "companies": ["Infosys"]})
+    assert events_of(named)[0][1]["understood"]["companies"] == ["TCS"]   # the question wins over the toggle

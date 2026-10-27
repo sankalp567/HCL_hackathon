@@ -4,10 +4,10 @@ Laptop, no GPU:   uvicorn app.main:app --port 8000                      (LLM_BAC
 GPU server:       LLM_BACKEND=transformers uvicorn app.main:app --host 127.0.0.1 --port 8000
 vLLM elsewhere:   LLM_BACKEND=vllm LLM_BASE_URL=http://127.0.0.1:8001/v1 uvicorn app.main:app --port 8000
 
-SSE contract of POST /api/ask ({"question": str}), one JSON object per event:
+SSE contract of POST /api/ask ({"question": str, "companies"?: [str]}), one JSON object per event:
   meta       {query_id, understood: {companies, metric, fy, named}, sources: [{n, company, report, pdf, doc_id, page, kind, score}]}
   token      {t}                      a piece of the answer text, with [n] citation markers
-  citations  {citations: [{n, company, report, pdf, doc_id, page, kind, quote, bbox, verified}]}
+  citations  {citations: [{n, company, report, pdf, doc_id, page, kind, quote, bbox, verified, fact_id, passage_id}]}
   notice     {message}                e.g. the model was unavailable and the extractive backend answered
   error      {message}
   done       {status: answered|not_found|out_of_scope|error, message, latency_ms, backend, gate}
@@ -27,6 +27,7 @@ from pydantic import BaseModel, Field
 
 from app.config import ROOT, Settings, get_settings
 from app.db import connect
+from app.evidence import fact_evidence, passage_evidence, search_snippets
 from app.llm import LLM, TransformersLLM, get_llm
 from app.qa import answer_events
 
@@ -36,6 +37,14 @@ log = logging.getLogger("app")
 
 class AskRequest(BaseModel):
     question: str = Field(min_length=1, max_length=500)
+    companies: list[str] | None = None   # default scope when the question names no company (UI toggle)
+
+
+def with_bbox(row) -> dict:
+    d = dict(row)
+    box = [d.pop(k) for k in ("x0", "y0", "x1", "y1")]
+    d["bbox"] = box if None not in box else None
+    return d
 
 
 def sse(event: str, data: dict) -> str:
@@ -72,20 +81,72 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None) -> Fast
             info |= {"status": "degraded", "problem": exc.detail}
         return info
 
+    @app.get("/api/overview")
+    def overview() -> dict:
+        with db() as conn:
+            reports = [dict(r) for r in conn.execute(
+                "SELECT company, doc_id, title, file AS pdf, fy, n_pages AS pages FROM documents ORDER BY rowid")]
+            metric_rows = [dict(r) for r in conn.execute("SELECT metric, label, unit FROM metric_dictionary ORDER BY rowid")]
+            years = [r[0] for r in conn.execute("SELECT DISTINCT fy FROM facts ORDER BY fy")]
+            counts = {name: conn.execute(sql).fetchone()[0] for name, sql in (
+                ("facts", "SELECT count(*) FROM facts"), ("passages", "SELECT count(*) FROM passages"),
+                ("tables", "SELECT count(*) FROM elements WHERE kind = 'table'"), ("pages", "SELECT count(*) FROM pages"))}
+        model = {"vllm": settings.llm_model, "transformers": settings.llm_model_path.name}.get(llm.name)
+        return {"companies": [r["company"] for r in reports], "reports": reports, "metrics": metric_rows,
+                "years": years, "llm_backend": llm.name, "model": model, "counts": counts}
+
     @app.post("/api/ask")
     def ask(req: AskRequest) -> StreamingResponse:
-        events = (sse(event, data) for event, data in answer_events(req.question, settings, llm))
+        events = (sse(event, data) for event, data in answer_events(req.question, settings, llm, req.companies))
         return StreamingResponse(events, media_type="text/event-stream",
                                  headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
     @app.get("/api/metrics")
     def metrics(metric: str = Query("revenue", pattern=r"^[a-z_]{1,40}$")) -> dict:
+        """The one chosen value per company x year (view best_facts), as the chart plots it."""
         with db() as conn:
+            info = conn.execute("SELECT label, unit FROM metric_dictionary WHERE metric = ?", (metric,)).fetchone()
             rows = conn.execute(
-                """SELECT company, fy, value, unit, basis, page_no, doc_id, status, quote, source_rank, agrees_with,
-                          label_in_report, x0, y0, x1, y1
-                   FROM best_facts WHERE metric = ? ORDER BY company, fy""", (metric,)).fetchall()
-        return {"metric": metric, "facts": [dict(r) for r in rows]}
+                """SELECT f.fact_id, f.company, f.fy, f.value, f.unit, f.basis, f.page_no, f.doc_id, d.file AS pdf,
+                          d.title AS report, f.status, f.quote, f.label_in_report, f.source_kind, f.source_rank,
+                          f.agrees_with, f.x0, f.y0, f.x1, f.y1
+                   FROM best_facts f JOIN documents d ON d.doc_id = f.doc_id
+                   WHERE f.metric = ? ORDER BY f.company, f.fy""", (metric,)).fetchall()
+        return {"metric": metric, "label": info["label"] if info else metric, "unit": info["unit"] if info else None,
+                "facts": [with_bbox(r) for r in rows]}
+
+    @app.get("/api/facts")
+    def facts(company: str | None = None, metric: str | None = None, fy: str | None = None) -> dict:
+        """Every extracted fact (not only the chosen ones), for the Extracted Data view."""
+        sql = """SELECT f.fact_id, f.company, f.metric, f.fy, f.value, f.unit, f.basis, f.page_no, f.doc_id,
+                        d.file AS pdf, d.title AS report, f.status, f.quote, f.label_in_report, f.source_kind,
+                        f.source_rank, f.agrees_with, f.conflicts_with, f.x0, f.y0, f.x1, f.y1,
+                        (b.fact_id IS NOT NULL) AS is_best
+                 FROM facts f JOIN documents d ON d.doc_id = f.doc_id
+                 LEFT JOIN best_facts b ON b.fact_id = f.fact_id WHERE 1 = 1"""
+        params = []
+        for column, value in (("f.company", company), ("f.metric", metric), ("f.fy", fy)):
+            if value:
+                sql += f" AND {column} = ?"
+                params.append(value)
+        with db() as conn:
+            rows = conn.execute(sql + " ORDER BY f.metric, f.company, f.fy, f.source_rank", params).fetchall()
+        return {"facts": [with_bbox(r) | {"is_best": bool(r["is_best"])} for r in rows]}
+
+    @app.get("/api/evidence")
+    def evidence(fact_id: int | None = None, passage_id: int | None = None) -> dict:
+        if (fact_id is None) == (passage_id is None):
+            raise HTTPException(400, "give exactly one of fact_id or passage_id")
+        with db() as conn:
+            card = fact_evidence(conn, fact_id) if fact_id is not None else passage_evidence(conn, passage_id)
+        if card is None:
+            raise HTTPException(404, "no such evidence")
+        return card
+
+    @app.get("/api/search")
+    def search(q: str = Query(min_length=1, max_length=200), company: str | None = None) -> dict:
+        with db() as conn:
+            return {"results": search_snippets(conn, q, company)}
 
     def pdf_for(doc_id: str | None = None, file: str | None = None):
         """Resolve a PDF only through the documents table, never from a raw request path."""
