@@ -1,0 +1,8 @@
+# Runtime for the backend, the frontend server and the facts.db build (Python 3.12).
+# The GPU-only pieces (Docling run, self-hosted LLM) are in requirements-gpu.txt.
+pymupdf>=2.0
+fastapi>=0.162
+uvicorn>=0.54
+pyyaml>=6.0
+pytest>=9.1
+httpx>=0.28

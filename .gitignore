@@ -1,0 +1,14 @@
+# Python
+.venv/
+.venv-extract/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Secrets and local settings
+.env
+
+# Large inputs and intermediates (see README "Data" for how to get or rebuild them)
+data/reports/
+data/extracted/
+data/page_cache/

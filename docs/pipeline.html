@@ -1,0 +1,837 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pipeline and Workflow</title>
+<style>
+@page { size: A4 landscape; margin: 0; }
+:root {
+  --ink: #1C2230; --muted: #566070; --faint: #8A93A3; --line: #D5DAE2; --soft: #F5F7FA;
+  --code-bg: #EAF1FB; --code: #2F5FB3;
+  --llm-bg: #F1ECFA; --llm: #6A43A8;
+  --gate-bg: #FFF4DD; --gate: #A86A12;
+  --human-bg: #EEF0F3; --human: #4A5260;
+  --ok-bg: #E6F4EC; --ok: #1E7A4C;
+  --nf-bg: #FDEFE4; --nf: #C2571A;
+  --oos-bg: #FDECEC; --oos: #B42318;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: #fff; color: var(--ink);
+  font-family: "Noto Sans", "DejaVu Sans", Arial, sans-serif;
+  -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.page { width: 297mm; height: 210mm; padding: 9mm 12mm 10mm; position: relative; overflow: hidden;
+  break-after: page; display: flex; flex-direction: column; }
+.page:last-child { break-after: auto; }
+.hdr { display: flex; justify-content: space-between; align-items: baseline;
+  border-bottom: 1.5px solid var(--ink); padding-bottom: 5px; margin-bottom: 8px; }
+.hdr h2 { margin: 0; font-size: 20px; letter-spacing: -0.2px; }
+.hdr .tag { font-size: 10.5px; color: var(--muted); }
+.lede { font-size: 12px; color: var(--muted); margin: 0 0 10px; line-height: 1.45; max-width: 1000px; }
+.foot { position: absolute; left: 12mm; right: 12mm; bottom: 4.5mm; display: flex;
+  justify-content: space-between; font-size: 9px; color: var(--faint); }
+h3 { font-size: 13px; margin: 0 0 6px; letter-spacing: 0.1px; }
+h4 { font-size: 11.5px; margin: 0 0 4px; }
+p, li, td, th { font-size: 11px; line-height: 1.4; }
+ul { margin: 0; padding-left: 16px; }
+li { margin: 0 0 2px; }
+code, pre { font-family: "Noto Sans Mono", "DejaVu Sans Mono", monospace; }
+pre { font-size: 10px; line-height: 1.35; background: var(--soft); border: 1px solid var(--line);
+  border-radius: 6px; padding: 8px 10px; margin: 0; white-space: pre; }
+table { border-collapse: collapse; width: 100%; }
+th { text-align: left; font-weight: 700; color: var(--ink); border-bottom: 1.5px solid var(--ink); padding: 4px 6px; font-size: 10.5px; }
+td { border-bottom: 1px solid var(--line); padding: 4px 6px; vertical-align: top; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+table.tight td, table.tight th { padding: 3px 6px; }
+.muted { color: var(--muted); }
+.small { font-size: 10px; }
+
+/* diagram nodes */
+svg.d { width: 100%; height: auto; display: block; overflow: visible; }
+svg.d text { font-family: "Noto Sans", "DejaVu Sans", Arial, sans-serif; }
+.n { width: 100%; height: 100%; border: 1.5px solid; border-radius: 8px; padding: 6px 8px;
+  font-size: 10.5px; line-height: 1.3; display: flex; flex-direction: column; justify-content: center;
+  gap: 3px; color: var(--ink); overflow: hidden; }
+.n b { font-size: 12px; display: block; }
+.n span { color: #3A4354; }
+.n .sm { font-size: 9.5px; color: var(--muted); }
+.code { background: var(--code-bg); border-color: var(--code); }
+.llm { background: var(--llm-bg); border-color: var(--llm); }
+.gate { background: var(--gate-bg); border-color: var(--gate); }
+.human { background: var(--human-bg); border-color: var(--human); border-style: dashed; }
+.data { background: #fff; border-color: var(--faint); border-style: dashed; }
+.ui { background: #fff; border-color: var(--ink); }
+.ok { background: var(--ok-bg); border-color: var(--ok); }
+.nf { background: var(--nf-bg); border-color: var(--nf); }
+.oos { background: var(--oos-bg); border-color: var(--oos); }
+.file { width: 100%; height: 100%; border: 1px dashed var(--faint); border-radius: 4px; background: #fff;
+  font-family: "Noto Sans Mono", "DejaVu Sans Mono", monospace; font-size: 9.5px; color: var(--muted);
+  display: flex; align-items: center; justify-content: center; }
+.k { display: inline-flex; width: 17px; height: 17px; border-radius: 50%; background: var(--ink); color: #fff;
+  font-size: 10px; font-weight: 700; align-items: center; justify-content: center; margin-right: 5px; flex: none; vertical-align: -3px; }
+.it { display: inline-block; font-size: 8.5px; font-weight: 700; padding: 1px 5px; border-radius: 3px; color: #fff;
+  background: var(--ink); margin-left: 5px; letter-spacing: 0.3px; vertical-align: 1px; line-height: 1.3; }
+.it.i2 { background: #5A6272; } .it.i3 { background: #9AA2AF; }
+.req { display: inline-block; font-size: 8.5px; font-weight: 700; padding: 1px 5px; border-radius: 3px;
+  color: var(--ok); border: 1px solid var(--ok); margin-left: 5px; }
+.pill { display: inline-block; font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 9px;
+  background: var(--llm); color: #fff; margin-top: 2px; align-self: flex-start; }
+.edge { stroke: #5A6272; stroke-width: 1.6; fill: none; marker-end: url(#ah); }
+.edge.two { marker-start: url(#ahs); }
+.edge.dash { stroke-dasharray: 5 4; }
+.edge.red { stroke: var(--oos); marker-end: url(#ah-red); }
+.edge.or { stroke: var(--nf); marker-end: url(#ah-or); }
+.edge.thin { stroke-width: 1.2; stroke-dasharray: 2 3; marker-end: none; }
+.el { font-size: 10px; fill: var(--muted); }
+.el.b { font-weight: 700; fill: var(--ink); }
+.colh { font-size: 10.5px; font-weight: 700; fill: var(--muted); letter-spacing: 1px; }
+
+/* legend */
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; font-size: 10.5px; color: var(--muted); }
+.legend .sw { display: inline-block; width: 22px; height: 13px; border: 1.5px solid; border-radius: 3px; margin-right: 5px; vertical-align: -2px; }
+
+/* layout helpers */
+.row { display: flex; gap: 16px; }
+.col { flex: 1; min-width: 0; }
+.panel { border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; background: #fff; }
+.callout { border-left: 3px solid var(--code); background: var(--code-bg); padding: 7px 10px; border-radius: 0 6px 6px 0; font-size: 11px; line-height: 1.4; }
+.callout.warn { border-left-color: var(--gate); background: var(--gate-bg); }
+
+/* title page */
+.title { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid var(--ink);
+  padding-bottom: 7px; margin-bottom: 8px; }
+.title h1 { font-size: 27px; margin: 0; letter-spacing: -0.5px; }
+.title .sub { font-size: 13px; color: var(--muted); margin-top: 3px; }
+.title .meta { text-align: right; font-size: 10.5px; color: var(--muted); line-height: 1.5; }
+
+/* wireframe (page 5) */
+.wire { border: 1.5px solid var(--ink); border-radius: 8px; overflow: hidden; position: relative; background: #fff; }
+.chrome { height: 22px; background: var(--soft); border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 5px; padding: 0 8px; font-size: 9.5px; color: var(--faint); }
+.chrome i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); display: inline-block; }
+.chrome span { margin-left: 10px; background: #fff; border: 1px solid var(--line); border-radius: 4px; padding: 0 30px 0 6px; }
+.apphdr { display: flex; align-items: center; gap: 10px; padding: 7px 12px; border-bottom: 1px solid var(--line); font-size: 11px; }
+.apphdr b { font-size: 13px; }
+.apphdr nav { margin-left: auto; display: flex; gap: 4px; }
+.apphdr nav a, .tabs a { font-size: 10px; padding: 3px 8px; border: 1px solid var(--line); border-radius: 4px; color: var(--muted); position: relative; }
+.apphdr nav a.on, .tabs a.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+.wgrid { display: grid; grid-template-columns: 1.25fr 1fr; }
+.wchart { padding: 9px 12px; border-right: 1px solid var(--line); position: relative; }
+.wask { padding: 9px 12px; display: flex; flex-direction: column; gap: 7px; position: relative; }
+.tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 7px; }
+.wq { font-size: 10.5px; color: var(--ink); font-weight: 700; margin-bottom: 4px; }
+.bars { height: 185px; display: flex; align-items: flex-end; justify-content: space-around; border-bottom: 1.5px solid var(--ink); padding: 0 10px; position: relative; }
+.grp { display: flex; gap: 5px; align-items: flex-end; height: 100%; position: relative; }
+.bar { width: 30px; background: #9DB6E3; border-radius: 3px 3px 0 0; position: relative; }
+.bar.y2 { background: var(--code); }
+.blabels { display: flex; justify-content: space-around; padding: 3px 10px 0; font-size: 10px; text-align: center; }
+.blabels div { width: 90px; }
+.blabels small { display: block; color: var(--code); font-size: 9px; }
+.wlegend { font-size: 9.5px; color: var(--muted); margin-top: 5px; display: flex; flex-wrap: wrap; gap: 3px 12px; }
+.wlegend span { white-space: nowrap; }
+.wlegend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; margin-right: 4px; }
+.wnote { font-size: 9.5px; color: var(--muted); border-top: 1px dashed var(--line); margin-top: 6px; padding-top: 5px; line-height: 1.4; }
+.inp { border: 1.5px solid var(--ink); border-radius: 6px; padding: 6px 8px; font-size: 10.5px; color: var(--faint); display: flex; justify-content: space-between; align-items: center; }
+.inp .btn { background: var(--ink); color: #fff; border-radius: 4px; padding: 2px 10px; font-size: 10px; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chips span { font-size: 9px; border: 1px solid var(--line); border-radius: 10px; padding: 1px 7px; color: var(--muted); }
+.card { border: 1.5px solid; border-radius: 6px; padding: 7px 9px; font-size: 10.5px; line-height: 1.4; position: relative; }
+.card.okc { border-color: var(--ok); background: var(--ok-bg); }
+.card.nfc { border-color: var(--nf); background: var(--nf-bg); }
+.cite { display: inline-block; font-size: 9px; border: 1px solid var(--code); color: var(--code); background: #fff; border-radius: 10px; padding: 0 7px; margin: 4px 4px 0 0; }
+.viewer { border-top: 1px solid var(--line); padding: 8px 12px 10px; background: var(--soft); position: relative; }
+.viewer .vh { font-size: 10.5px; font-weight: 700; margin-bottom: 6px; }
+.sheet { background: #fff; border: 1px solid var(--line); border-radius: 3px; padding: 8px 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 18px; }
+.sheet i { display: block; height: 5px; background: #E4E8EE; border-radius: 2px; }
+.sheet i.hl { background: #FFD66B; outline: 2px solid #F2A900; }
+.mk { position: absolute; width: 19px; height: 19px; border-radius: 50%; background: var(--oos); color: #fff; font-size: 10.5px;
+  font-weight: 700; font-style: normal; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2px #fff; z-index: 2; }
+.steps { counter-reset: s; list-style: none; padding: 0; margin: 0; }
+.steps li { position: relative; padding-left: 28px; margin-bottom: 8px; font-size: 11px; line-height: 1.4; }
+.steps li::before { counter-increment: s; content: counter(s); position: absolute; left: 0; top: 0; width: 19px; height: 19px;
+  border-radius: 50%; background: var(--oos); color: #fff; font-size: 10.5px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.steps li em { font-style: normal; color: var(--muted); }
+
+/* team cards */
+.cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.mcard { border: 1px solid var(--line); border-top: 4px solid var(--ink); border-radius: 6px; padding: 9px 10px; }
+.mcard h4 { font-size: 12.5px; margin-bottom: 2px; }
+.mcard .own { font-size: 10px; color: var(--muted); margin-bottom: 6px; font-family: "Noto Sans Mono", "DejaVu Sans Mono", monospace; }
+.mcard dl { margin: 0; }
+.mcard dt { font-size: 9.5px; font-weight: 700; color: var(--muted); letter-spacing: 0.6px; margin-top: 5px; }
+.mcard dd { margin: 1px 0 0; font-size: 10.5px; line-height: 1.38; }
+
+/* iteration cards */
+.icards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.icard { border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; }
+.icard h4 { display: flex; justify-content: space-between; }
+.icard h4 span { color: var(--muted); font-weight: 400; font-size: 10px; }
+.done { margin-top: 5px; font-size: 10px; color: var(--ok); font-weight: 700; }
+.check { list-style: none; padding: 0; }
+.check li { padding-left: 18px; position: relative; }
+.check li::before { content: ""; position: absolute; left: 0; top: 3px; width: 10px; height: 10px; border: 1.5px solid var(--ink); border-radius: 2px; }
+
+/* decisions */
+.dec { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+.dcard { border: 1px solid var(--line); border-radius: 6px; padding: 8px 9px; }
+.dcard .num { font-size: 18px; font-weight: 700; color: var(--code); line-height: 1; }
+.dcard h4 { margin: 4px 0 3px; font-size: 11.5px; }
+.dcard p { margin: 0; font-size: 10.5px; color: #3A4354; }
+.stack { display: flex; flex-wrap: wrap; gap: 5px; }
+/* schema boxes */
+.er { width: 100%; height: 100%; border: 1.3px solid var(--ink); border-radius: 6px; background: #fff; overflow: hidden; }
+.er h5 { margin: 0; padding: 3px 7px; background: var(--ink); color: #fff; font-size: 10.5px; font-family: "Noto Sans Mono", "DejaVu Sans Mono", monospace; }
+.er p { margin: 0; padding: 4px 7px; font-family: "Noto Sans Mono", "DejaVu Sans Mono", monospace; font-size: 9.3px; line-height: 1.38; color: #3A4354; }
+.er.key { border-color: var(--code); border-width: 2px; background: var(--code-bg); }
+.er.key h5 { background: var(--code); }
+.stack span { font-size: 10px; border: 1px solid var(--line); border-radius: 4px; padding: 2px 7px; background: var(--soft); }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#5A6272"/></marker>
+    <marker id="ahs" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10,0 L0,5 L10,10 z" fill="#5A6272"/></marker>
+    <marker id="ah-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#B42318"/></marker>
+    <marker id="ah-or" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#C2571A"/></marker>
+  </defs>
+</svg>
+
+<!-- ============================ PAGE 1: OVERVIEW ============================ -->
+<section class="page">
+  <div class="title">
+    <div>
+      <h1>IT Annual Reports, Compared and Cited</h1>
+      <div class="sub">TCS · Infosys · HCLTech, FY2025-26: how the application works, end to end (design before build)</div>
+    </div>
+    <div class="meta">HCLTech AI Hackathon · IIT Gandhinagar<br>Use Case 2: IT Companies in India<br>27 Oct 2026 · pipeline v0.3 · free, local tools only</div>
+  </div>
+  <p class="lede"><b style="color:var(--ink)">Two jobs, one evidence base.</b> <b style="color:var(--ink)">R1</b>: a comparison chart where every value carries the report page it came from, with units and fiscal years matched or the mismatch stated.
+    <b style="color:var(--ink)">R2</b>: a question box that answers only from the three annual reports, cites company · report · page for every answer, and says “Not found in the reports” when the evidence is absent.</p>
+
+  <svg class="d" viewBox="0 0 1032 440">
+    <text class="colh" x="75" y="16" text-anchor="middle">SOURCES</text>
+    <text class="colh" x="320" y="16" text-anchor="middle">OFFLINE · BUILT ONCE</text>
+    <text class="colh" x="565" y="16" text-anchor="middle">STORES</text>
+    <text class="colh" x="750" y="16" text-anchor="middle">SERVER · FASTAPI</text>
+    <text class="colh" x="948" y="16" text-anchor="middle">BROWSER</text>
+    <line x1="650" y1="4" x2="650" y2="418" stroke="#8A93A3" stroke-width="1.2" stroke-dasharray="6 5"/>
+    <text class="el" x="642" y="434" text-anchor="end">prepared before the demo</text>
+    <text class="el" x="658" y="434">answered live, per request</text>
+
+    <foreignObject x="0" y="40" width="150" height="370"><div class="n data" style="justify-content:space-around">
+      <b>Annual reports (PDF)</b>
+      <span><b style="font-size:11px">TCS</b> Annual Report 2025-26 · 360 pages</span>
+      <span><b style="font-size:11px">Infosys</b> Integrated Annual Report 2025-26 · 383 pages</span>
+      <span><b style="font-size:11px">HCLTech</b> Annual Report 2025-26 · 462 pages</span>
+      <span class="sm">Source register (title, FY, URL, download date, SHA-256) goes in the README.</span>
+    </div></foreignObject>
+
+    <foreignObject x="175" y="40" width="130" height="90"><div class="n code"><b><i class="k">1</i>Parse (Docling)</b><span>GPU: text, tables as cell grids, figures with page + box</span></div></foreignObject>
+    <foreignObject x="175" y="180" width="130" height="90"><div class="n llm"><b><i class="k">2</i>Chart pass<i class="it i3">IT3</i></b><span>optional: free OCR + Granite Vision on the GPU</span></div></foreignObject>
+    <foreignObject x="335" y="40" width="130" height="90"><div class="n code"><b><i class="k">4</i>Index passages</b><span>paragraphs, tables, chart notes; BM25 + vectors</span></div></foreignObject>
+    <foreignObject x="335" y="180" width="130" height="90"><div class="n gate"><b><i class="k">3</i>Normalise, verify</b><span>₹, crore, %, FY, names; each number checked on its page</span></div></foreignObject>
+
+    <foreignObject x="495" y="40" width="140" height="90"><div class="n data"><b>Search index</b><span>passages tagged company · report · page</span></div></foreignObject>
+    <foreignObject x="495" y="180" width="140" height="90"><div class="n data"><b>facts.db (SQLite)</b><span>every number with unit, FY, page, box, quote, checks</span></div></foreignObject>
+
+    <foreignObject x="665" y="40" width="170" height="90"><div class="n code"><b>POST /api/ask</b><span>fact lookup or search → reranker gate → extractive QA → citation check</span></div></foreignObject>
+    <foreignObject x="672" y="140" width="156" height="30"><div class="n llm" style="padding:2px 6px;align-items:center"><b style="font-size:10px">Local models · laptop CPU</b></div></foreignObject>
+    <foreignObject x="665" y="180" width="170" height="90"><div class="n code"><b>GET /api/metrics</b><span>verified facts only; no LLM at request time</span></div></foreignObject>
+    <foreignObject x="665" y="320" width="170" height="90"><div class="n code"><b>GET /api/page</b><span>renders the cited page and highlights the cell, bar or quote</span></div></foreignObject>
+
+    <foreignObject x="865" y="40" width="167" height="90"><div class="n ui"><b>Ask the reports<i class="req">R2</i></b><span>answer + citation chips, or “Not found in the reports”</span></div></foreignObject>
+    <foreignObject x="865" y="180" width="167" height="90"><div class="n ui"><b>Comparison chart<i class="req">R1</i></b><span>3 companies; “p. N” under every bar; mismatch notes</span></div></foreignObject>
+    <foreignObject x="865" y="320" width="167" height="90"><div class="n ui"><b>Page viewer</b><span>opens when a citation or a bar is clicked</span></div></foreignObject>
+
+    <path class="edge" d="M150,85 L175,85"/>
+    <path class="edge" d="M150,225 L175,225"/>
+    <path class="edge" d="M305,85 L335,85"/>
+    <path class="edge" d="M305,85 L320,85 L320,205 L335,205"/>
+    <path class="edge" d="M305,245 L335,245"/>
+    <path class="edge" d="M400,180 L400,130"/>
+    <text class="el" x="406" y="160">chart and KPI notes</text>
+    <path class="edge" d="M465,85 L495,85"/>
+    <path class="edge" d="M465,225 L495,225"/>
+    <path class="edge" d="M635,85 L665,85"/>
+    <path class="edge" d="M635,225 L665,225"/>
+    <path class="edge" d="M635,200 L665,120"/>
+    <path class="edge" d="M150,365 L665,365"/>
+    <text class="el" x="408" y="358" text-anchor="middle">page image + box of the cited cell, bar or quote</text>
+    <path class="edge two" d="M750,130 L750,140"/>
+    <path class="edge two" d="M835,85 L865,85"/>
+    <path class="edge two" d="M835,225 L865,225"/>
+    <path class="edge two" d="M835,365 L865,365"/>
+    <path class="edge" d="M948,270 L948,320"/>
+    <text class="el" x="954" y="300">click</text>
+  </svg>
+
+  <div style="margin-top:10px" class="legend">
+    <span><i class="sw" style="background:var(--code-bg);border-color:var(--code)"></i>Deterministic code</span>
+    <span><i class="sw" style="background:var(--llm-bg);border-color:var(--llm)"></i>Free local ML model</span>
+    <span><i class="sw" style="background:var(--gate-bg);border-color:var(--gate)"></i>Check / gate</span>
+    <span><i class="sw" style="background:var(--human-bg);border-color:var(--human);border-style:dashed"></i>Person</span>
+    <span><i class="sw" style="background:#fff;border-color:var(--faint);border-style:dashed"></i>File / data</span>
+    <span><i class="sw" style="background:#fff;border-color:var(--ink)"></i>Screen</span>
+    <span><i class="it" style="margin:0 4px 0 0">IT1</i><i class="it i2" style="margin:0 4px 0 0">IT2</i><i class="it i3" style="margin:0 4px 0 0">IT3</i>built in iteration 1 / 2 / 3</span>
+  </div>
+  <div class="row" style="margin-top:9px">
+    <div class="callout col"><b>R1 path:</b> PDFs → Docling tables → normalise + verify → <code>facts.db</code> → choose source, person signs off → <code>GET /api/metrics</code> → chart. Pages 2–4.</div>
+    <div class="callout col"><b>R2 path:</b> question → <code>POST /api/ask</code> → scope guard → fact lookup, or search + reranker → extractive QA picks the exact span → answer with citations, or “Not found in the reports”. Page 5.</div>
+  </div>
+  <div class="foot"><span>Use Case 2 · Pipeline and workflow v0.3 · design document, nothing built yet</span><span>1 / 9</span></div>
+</section>
+
+<!-- ============================ PAGE 2: EXTRACTION ============================ -->
+<section class="page">
+  <div class="hdr"><h2>1 · Offline extraction: keep tables, charts and KPI tiles as data</h2><span class="tag">owner: member A · runs once on the sustain GPU server</span></div>
+  <p class="lede">Plain text extraction loses structure. Measured this morning: tables flatten, chart labels scramble (TCS’s revenue trend reads “2 67, 0 2 … 1 9 1 , 754” and ₹ comes out as “H”), and KPI tiles lose which number belongs to which label. So every page goes through a layout-aware parser (Docling), the charted metrics are taken from tables, and every number is checked against the page’s own text. Charts and tiles get an optional extra pass with free models. No paid API anywhere.</p>
+
+  <svg class="d" viewBox="0 0 1032 262">
+    <foreignObject x="0" y="62" width="150" height="104"><div class="n code"><b><i class="k">0</i>Classify pages</b><span>PyMuPDF, milliseconds per page: statement · table · visual (chart, KPI tiles) · letter-spaced · image-only</span></div></foreignObject>
+    <foreignObject x="180" y="0" width="230" height="104"><div class="n code"><b><i class="k">1</i>Layout parser: Docling on GPU<i class="it">IT1</i></b><span>all 1,205 pages: reading order, headings, paragraphs; tables rebuilt as cell grids (TableFormer); figures and charts located with page + box</span></div></foreignObject>
+    <foreignObject x="180" y="128" width="230" height="104"><div class="n llm"><b><i class="k">2</i>Chart and OCR pass, optional<i class="it i3">IT3</i></b><span>free models on the GPU: RapidOCR re-reads TCS’s letter-spaced and image-only pages; Docling’s Granite Vision turns bar, line and pie charts into tables</span></div></foreignObject>
+    <foreignObject x="440" y="62" width="180" height="104"><div class="n code"><b><i class="k">3</i>Normalise</b><span>1,78,650 · ₹ (“H” in TCS fonts) · crore / lakh / million · (negatives) · %; FY 2026 → FY2025-26; labels → metric names</span></div></foreignObject>
+    <foreignObject x="650" y="62" width="180" height="104"><div class="n gate"><b><i class="k">4</i>Verify</b><span>number found in the page’s text layer (after de-spacing), else marked image-only; the same metric from 2+ places must agree</span></div></foreignObject>
+    <foreignObject x="860" y="62" width="172" height="104"><div class="n data"><b>facts.db</b><span>SQLite: facts, table cells, chart points, passages + full-text index; page images. Committed once.</span></div></foreignObject>
+    <foreignObject x="650" y="196" width="180" height="62"><div class="n nf"><b>Fails → unverified</b><span>kept, never charted; listed for a person to check</span></div></foreignObject>
+    <text class="el" x="295" y="252" text-anchor="middle">free: models run on the sustain GPUs; optional because the key metrics also sit in tables</text>
+
+    <path class="edge" d="M150,114 L165,114 L165,52 L180,52"/>
+    <path class="edge" d="M165,114 L165,180 L180,180"/>
+    <path class="edge" d="M410,52 L425,52 L425,100 L440,100"/>
+    <path class="edge" d="M410,180 L425,180 L425,128 L440,128"/>
+    <path class="edge" d="M620,114 L650,114"/>
+    <path class="edge" d="M830,114 L860,114"/>
+    <text class="el" x="845" y="106" text-anchor="middle">pass</text>
+    <path class="edge or" d="M740,166 L740,196"/>
+    <text class="el" x="746" y="185">fail</text>
+  </svg>
+
+  <div class="row" style="margin-top:8px">
+    <div class="col" style="flex:1.2">
+      <h3>Tested on your PDFs this morning</h3>
+      <table class="tight">
+        <tr><th style="width:27%">Page</th><th style="width:34%">PyMuPDF4LLM (CPU)</th><th>Docling (sustain GPU)</th></tr>
+        <tr><td>Infosys p. 16, “Key trends” table</td><td><b style="color:var(--ok)">Kept</b>, as a Markdown table</td><td><b style="color:var(--ok)">Kept</b>, 10×6 cell grid with headers</td></tr>
+        <tr><td>HCLTech pp. 375–376, consolidated P&amp;L</td><td><b style="color:var(--ok)">Kept</b>; one header split (“Year e | nded”)</td><td><b style="color:var(--ok)">Kept</b>, 31×5 grid: “Revenue from operations 130,144 | 117,055”</td></tr>
+        <tr><td>Infosys p. 16, KPI tiles</td><td><b style="color:var(--oos)">Lost</b>: “… margin … 21.0% ₹ 43,075 cr 71.58”</td><td><b style="color:var(--gate)">Partly</b>: most label–value pairs kept; side-by-side tiles merge</td></tr>
+        <tr><td>TCS p. 24, revenue trend chart</td><td><b style="color:var(--oos)">Lost</b>: “2 67, 0 2 … 1 9 1 , 754”, ₹ as “H”</td><td><b style="color:var(--oos)">Lost</b>: single letters; chart classed as “Logo”</td></tr>
+        <tr><td>TCS p. 192, notes table</td><td class="muted">not tested</td><td><b style="color:var(--gate)">Numbers kept</b>; capitals dropped (“S Dollar”, “ear ended”), ₹ as “J”</td></tr>
+        <tr><td>Speed</td><td>0.2–0.6 s per page</td><td>0.56 s per page: all 1,205 pages in about 6 min on 2 GPUs</td></tr>
+      </table>
+      <p class="small muted" style="margin:5px 0 0">Both parsers fail on TCS’s designed pages, so those go through the vision pass. About 200 pages are statements and notes (clean tables); 8 TCS pages are letter-spaced; 10 are image-only.</p>
+    </div>
+    <div class="col">
+      <h3>Why this split</h3>
+      <ul>
+        <li><b>Text-layer numbers are exact.</b> Where the parser can read a table, its numbers come straight from the PDF, character for character. A model is only needed where the text layer fails.</li>
+        <li><b>Charts are optional.</b> Revenue, margin, headcount, attrition and geography also appear in statement, MD&amp;A or BRSR tables. A chart value read by a model is used only after a person signs it off.</li>
+        <li><b>Tools, all free.</b> Docling (MIT, IBM): layout model, TableFormer tables, figure detection, page + box for every item, on the sustain GPUs. PyMuPDF4LLM (tested above) is the fast fallback. Extras: RapidOCR (bundled with Docling) and IBM’s open Granite Vision chart model.</li>
+        <li><b>Run once, share the result.</b> Minutes on the GPU. <code>facts.db</code> is committed, so teammates need no GPU and no parser.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot"><span>Use Case 2 · Pipeline and workflow v0.3</span><span>2 / 9</span></div>
+</section>
+
+<!-- ============================ PAGE 3: FACT STORE ============================ -->
+<section class="page">
+  <div class="hdr"><h2>2 · The fact store: one SQLite file that every later layer reads</h2><span class="tag">owner: member A (schema, loader) · read by B, C and D</span></div>
+  <p class="lede">Numbers are stored as data, not text: one row per number in long format, like XBRL (company · metric · year · value · unit), each with the exact place it came from. The chart, the Q&amp;A and the page viewer all read the same checked rows.</p>
+  <div class="row" style="gap:18px">
+    <div style="width:600px;flex:none">
+      <svg class="d" viewBox="0 0 600 420">
+        <foreignObject x="0" y="0" width="170" height="80"><div class="er"><h5>documents</h5><p>doc_id · company · title · fy · url · sha256 · n_pages</p></div></foreignObject>
+        <foreignObject x="0" y="104" width="170" height="80"><div class="er"><h5>pages</h5><p>doc_id · page_no · kind · text_quality · image_path</p></div></foreignObject>
+        <foreignObject x="210" y="40" width="180" height="110"><div class="er"><h5>elements</h5><p>element_id · doc_id · page_no · bbox · kind: paragraph | table | chart | kpi | figure · section · text · extractor</p></div></foreignObject>
+        <foreignObject x="430" y="0" width="170" height="96"><div class="er"><h5>table_cells</h5><p>element_id · row · col · is_header · row_label · col_label · raw · value</p></div></foreignObject>
+        <foreignObject x="430" y="116" width="170" height="88"><div class="er"><h5>chart_points</h5><p>element_id · series · category · raw_label · value · read_from</p></div></foreignObject>
+        <foreignObject x="0" y="212" width="170" height="96"><div class="er"><h5>passages + fts</h5><p>passage_id · element_id · page_no · kind · text → FTS5 (bm25) and vectors for search</p></div></foreignObject>
+        <foreignObject x="0" y="332" width="170" height="86"><div class="er"><h5>metric_dictionary</h5><p>metric · company · labels in report · unit · basis · note</p></div></foreignObject>
+        <foreignObject x="210" y="232" width="390" height="130"><div class="er key"><h5>facts · one row per number</h5><p>fact_id · company · metric · fy · dimension (e.g. geography = Americas) · value · unit · scale · basis (consolidated | standalone) · source_kind (table | chart | kpi | text) · source_element · cell / point · page_no · bbox · quote · checks (in_text_layer, agrees_with) · status · verified_by</p></div></foreignObject>
+
+        <g stroke="#8A93A3" stroke-width="1.3" fill="none">
+          <path d="M85,80 L85,104"/>
+          <path d="M170,144 L210,100"/>
+          <path d="M390,70 L430,48"/>
+          <path d="M390,120 L430,160"/>
+          <path d="M300,150 L300,232"/>
+          <path d="M515,96 L515,116"/>
+          <path d="M515,204 L515,232"/>
+          <path d="M210,130 L170,250"/>
+          <path d="M170,375 L210,330"/>
+        </g>
+        <g class="el">
+          <text x="306" y="196">source element</text>
+          <text x="521" y="222">cell or point</text>
+          <text x="180" y="398">maps labels</text>
+          <text x="128" y="96">1 : n</text>
+        </g>
+      </svg>
+    </div>
+    <div class="col" style="display:flex;flex-direction:column;gap:7px">
+      <h3 style="margin:0">How each later layer uses it</h3>
+      <div class="panel"><h4>Chart (R1)</h4><pre style="font-size:9.5px">SELECT company, fy, value, page_no, bbox
+FROM facts WHERE metric = 'revenue'
+  AND basis = 'consolidated' AND status = 'verified'</pre></div>
+      <div class="panel"><h4>Q&amp;A (R2)</h4><p style="margin:0">Three lookups: <code>query_facts(company, metric, fy)</code> · <code>get_table(element_id)</code> · <code>search_passages(query, company)</code>. Numbers come from facts and table cells; descriptive answers are spans from passages.</p></div>
+      <div class="panel"><h4>Page viewer</h4><p style="margin:0">The bbox highlights the exact table cell or chart bar, not just a sentence.</p></div>
+      <div class="panel"><h4>Evaluation</h4><p style="margin:0">Numeric test questions are graded against facts; a report counts how many values agree across 2+ places.</p></div>
+      <div class="callout">Built once on the GPU server and committed as <code>data/facts.db</code> with a JSON export. Everyone else only reads it.</div>
+    </div>
+  </div>
+  <h3 style="margin-top:8px">Example facts, with real values read from your PDFs in today’s test</h3>
+  <table class="tight">
+    <tr><th>Company</th><th>Metric</th><th>FY</th><th class="num">Value</th><th>Unit</th><th>Where</th><th class="num">PDF page</th><th>Checks</th><th>Status</th></tr>
+    <tr><td>Infosys</td><td><code>revenue</code></td><td>FY2025-26</td><td class="num">1,78,650</td><td>₹ crore</td><td>“Key trends” table</td><td class="num">16</td><td>in text layer · KPI tile on the same page agrees</td><td>checked by code</td></tr>
+    <tr><td>Infosys</td><td><code>revenue</code></td><td>FY2024-25</td><td class="num">1,62,990</td><td>₹ crore</td><td>“Key trends” table</td><td class="num">16</td><td>in text layer</td><td>checked by code</td></tr>
+    <tr><td>HCLTech</td><td><code>profit_to_owners</code></td><td>FY2025-26</td><td class="num">16,642</td><td>₹ crore</td><td>Consolidated P&amp;L (printed p. 373)</td><td class="num">376</td><td>in text layer</td><td>checked by code</td></tr>
+    <tr><td>TCS</td><td><code>revenue</code></td><td>FY2025-26</td><td class="num">from chart</td><td>₹ crore</td><td>“Revenue trend” bar chart</td><td class="num">24</td><td>vision pass, then text layer after de-spacing</td><td>pending</td></tr>
+  </table>
+  <div class="foot"><span>Use Case 2 · Pipeline and workflow v0.3</span><span>3 / 9</span></div>
+</section>
+
+<!-- ============================ PAGE 3: METRICS ============================ -->
+<section class="page">
+  <div class="hdr"><h2>3 · Chart data (R1): pick the best fact, check it, then plot</h2><span class="tag">owner: member C · reads <code>facts.db</code></span></div>
+  <p class="lede">The chart never calls the LLM. For each company × metric × year it takes facts already in <code>facts.db</code>, prefers the most authoritative source, checks that other places in the report agree, and needs a person’s sign-off before plotting. A value that fails is not plotted.</p>
+
+  <svg class="d" viewBox="0 0 1032 246">
+    <foreignObject x="0" y="10" width="150" height="100"><div class="n code"><b><i class="k">1</i>Metric dictionary</b><span>unit, basis, FY and each company’s own term (<code>metrics.yaml</code>)</span></div></foreignObject>
+    <foreignObject x="172" y="10" width="150" height="100"><div class="n code"><b><i class="k">2</i>Collect candidate facts</b><span>rows in <code>facts.db</code> whose label matches that company’s terms</span></div></foreignObject>
+    <foreignObject x="344" y="10" width="160" height="100"><div class="n code"><b><i class="k">3</i>Choose the source</b><span>statement table → highlights table → chart → text; same FY, unit and basis</span></div></foreignObject>
+    <foreignObject x="526" y="10" width="160" height="100"><div class="n gate"><b><i class="k">4</i>Agreement check</b><span>other places stating the same metric must agree; image-only values need sign-off</span></div></foreignObject>
+    <foreignObject x="708" y="10" width="150" height="100"><div class="n human"><b><i class="k">5</i>Person signs off</b><span>opens the page, confirms, sets <code>verified_by</code></span></div></foreignObject>
+    <foreignObject x="880" y="10" width="152" height="100"><div class="n data"><b>chart_values</b><span>a view over <code>facts.db</code>; the chart’s only input</span></div></foreignObject>
+
+    <foreignObject x="470" y="150" width="290" height="80"><div class="n nf"><b>Sources disagree, or unverified</b><span>not plotted; logged as a failed attempt; fix the dictionary term or the extraction, then re-run</span></div></foreignObject>
+    <foreignObject x="880" y="150" width="152" height="80"><div class="n ui"><b>Chart<i class="req">R1</i></b><span>bars, “p. N” under each, mismatch notes</span></div></foreignObject>
+
+    <path class="edge" d="M150,60 L172,60"/>
+    <path class="edge" d="M322,60 L344,60"/>
+    <path class="edge" d="M504,60 L526,60"/>
+    <path class="edge" d="M686,60 L708,60"/>
+    <text class="el" x="697" y="52" text-anchor="middle">pass</text>
+    <path class="edge" d="M858,60 L880,60"/>
+    <text class="el" x="869" y="52" text-anchor="middle">ok</text>
+    <path class="edge or" d="M606,110 L606,150"/>
+    <text class="el" x="612" y="134">fail</text>
+    <path class="edge or" d="M783,110 L783,190 L760,190"/>
+    <text class="el" x="789" y="150">reject</text>
+    <path class="edge dash" d="M470,190 L75,190 L75,110"/>
+    <text class="el" x="270" y="184" text-anchor="middle">fix the term in the dictionary and re-run</text>
+    <path class="edge" d="M956,110 L956,150"/>
+  </svg>
+
+  <div class="row" style="margin-top:8px">
+    <div class="col" style="flex:1.75">
+      <h3>Metric dictionary, first draft: each company’s own words (measured in the PDFs)</h3>
+      <table>
+        <tr><th style="width:21%">Metric · unit · basis</th><th>TCS</th><th>Infosys</th><th>HCLTech</th><th style="width:16%">Note under the chart</th></tr>
+        <tr><td><b>Revenue</b> · ₹ crore · consolidated · FY25, FY26<i class="it">IT1</i></td><td>“Revenue from operations” (18 pages)</td><td>“Revenue from operations” (13 pages)</td><td>“Revenue from operations” (16 pages)</td><td class="muted">none</td></tr>
+        <tr><td><b>Headcount</b> · employees at 31 Mar<i class="it">IT1</i></td><td>“headcount” pp. 133, 134, 139, 143</td><td>“total employees” pp. 143, 158, 159, 167 · <b>never says “headcount”</b></td><td>“headcount” pp. 88, 89, 91, 135</td><td class="muted">none</td></tr>
+        <tr><td><b>Operating margin</b> · % of revenue<i class="it i2">IT2</i></td><td>“operating margin” pp. 23, 24, 58, 67</td><td>“operating margin” pp. 16, 18, 26, 80</td><td>“EBIT margin” pp. 83, 85, 86, 87, 99 · <b>never says “operating margin”</b></td><td>HCLTech reports EBIT margin</td></tr>
+        <tr><td><b>Attrition</b> · %<i class="it i2">IT2</i></td><td>“attrition” pp. 55, 63</td><td>“voluntary attrition” p. 144</td><td>“voluntary attrition” pp. 94, 217; “LTM” pp. 135, 217</td><td>definitions differ</td></tr>
+        <tr><td><b>Revenue by geography</b> · %<i class="it i2">IT2</i></td><td>“North America”, “Europe”</td><td>“North America”, “Europe”</td><td>“Americas”, “Europe”</td><td>regions differ</td></tr>
+      </table>
+      <p class="small muted" style="margin:5px 0 0">Pages are PDF pages where the term appears (probe run on 27 Oct). Which of them holds the reported figure is confirmed at step 5.</p>
+    </div>
+    <div class="col">
+      <h3>The fact behind one bar</h3>
+<pre>{
+  "company":  "HCLTech",
+  "metric":   "operating_margin",
+  "label_in_report": "EBIT margin",
+  "fy":       "FY2025-26",
+  "value":    &lt;number&gt;,
+  "unit":     "%",
+  "source_kind": "table",
+  "page_no":  &lt;PDF page&gt;,
+  "bbox":     [x0, y0, x1, y1],
+  "quote":    "&lt;the cell or label text&gt;",
+  "checks":   { "in_text_layer": true,
+                "agrees_with":   2 },
+  "verified_by": "&lt;member&gt;",
+  "status":   "verified"
+}</pre>
+    </div>
+  </div>
+  <div class="foot"><span>Use Case 2 · Pipeline and workflow v0.3</span><span>4 / 9</span></div>
+</section>
+
+<!-- ============================ PAGE 4: Q&A ============================ -->
+<section class="page">
+  <div class="hdr"><h2>4 · Ask the reports (R2): answer with citations, or refuse</h2><span class="tag">owner: member B · <code>POST /api/ask</code></span></div>
+  <p class="lede">Four ways to stop and one way to answer. An answer is shown only when every quote it relies on is found in the passage it cites. Every question is logged with the passages, scores and the gate that decided it.</p>
+
+  <div class="row" style="gap:22px">
+    <div style="width:540px;flex:none">
+      <svg class="d" viewBox="0 0 540 614">
+        <foreignObject x="0" y="0" width="300" height="52"><div class="n ui"><b>Question</b><span>typed by the user, or a judge’s own question</span></div></foreignObject>
+        <foreignObject x="0" y="70" width="300" height="52"><div class="n gate"><b><i class="k">1</i>Scope guard<i class="it i2">IT2</i></b><span>share price, investment advice, news, other companies?</span></div></foreignObject>
+        <foreignObject x="0" y="140" width="300" height="52"><div class="n code"><b><i class="k">2</i>Understand the question<i class="it">IT1</i></b><span>detect company and fiscal year; add dictionary synonyms</span></div></foreignObject>
+        <foreignObject x="0" y="210" width="300" height="52"><div class="n code"><b><i class="k">3</i>Retrieve passages + facts<i class="it">IT1</i><i class="it i2">IT2</i></b><span>BM25 (+ vectors, RRF), ≤4 per company; matching facts and table cells</span></div></foreignObject>
+        <foreignObject x="0" y="280" width="300" height="52"><div class="n gate"><b><i class="k">4</i>Evidence gate<i class="it">IT1</i></b><span>reranker score too low → stop here</span></div></foreignObject>
+        <foreignObject x="0" y="350" width="300" height="52"><div class="n llm"><b><i class="k">5</i>Extractive answer<i class="it">IT1</i></b><span>a fact row, or a QA model (RoBERTa, SQuAD 2.0) picks the exact span</span></div></foreignObject>
+        <foreignObject x="0" y="420" width="300" height="52"><div class="n gate"><b><i class="k">6</i>Abstain gate<i class="it">IT1</i></b><span>the QA model’s “no answer” score wins</span></div></foreignObject>
+        <foreignObject x="0" y="490" width="300" height="52"><div class="n gate"><b><i class="k">7</i>Citation check<i class="it i2">IT2</i></b><span>the span is on the cited page; numbers match facts.db</span></div></foreignObject>
+        <foreignObject x="0" y="560" width="300" height="52"><div class="n ok"><b>Answer + citation chips</b><span>company · report · PDF page → opens the page viewer</span></div></foreignObject>
+
+        <foreignObject x="345" y="70" width="195" height="52"><div class="n oos"><b>Out of scope</b><span>“I only answer from the three annual reports.”</span></div></foreignObject>
+        <foreignObject x="345" y="280" width="195" height="262"><div class="n nf" style="justify-content:center;gap:8px">
+          <b style="font-size:13px">Not found in the reports</b>
+          <span>One honest message, whichever gate stopped the question.</span>
+          <span>The trace records which gate fired and which passages were searched, so the team can see why.</span>
+        </div></foreignObject>
+
+        <path class="edge" d="M150,52 L150,70"/>
+        <path class="edge" d="M150,122 L150,140"/>
+        <path class="edge" d="M150,192 L150,210"/>
+        <path class="edge" d="M150,262 L150,280"/>
+        <path class="edge" d="M150,332 L150,350"/>
+        <path class="edge" d="M150,402 L150,420"/>
+        <path class="edge" d="M150,472 L150,490"/>
+        <path class="edge" d="M150,542 L150,560"/>
+        <text class="el" x="158" y="135">in scope</text>
+        <text class="el" x="158" y="345">enough evidence</text>
+        <text class="el" x="158" y="485">found</text>
+        <text class="el" x="158" y="555">verified</text>
+
+        <path class="edge red" d="M300,96 L345,96"/>
+        <text class="el" x="322" y="90" text-anchor="middle">no</text>
+        <path class="edge or" d="M300,306 L345,306"/>
+        <text class="el" x="322" y="300" text-anchor="middle">weak</text>
+        <path class="edge or" d="M300,446 L345,446"/>
+        <text class="el" x="322" y="440" text-anchor="middle">no</text>
+        <path class="edge or" d="M300,516 L345,516"/>
+        <text class="el" x="322" y="510" text-anchor="middle">fails</text>
+      </svg>
+    </div>
+
+    <div class="col" style="display:flex;flex-direction:column;gap:9px">
+      <div class="panel">
+        <h3>How an answer is built (no LLM, no API)</h3>
+        <ul>
+          <li><b>Numeric</b> (“Infosys revenue FY26?”): company, metric and year are detected, and the value is read from <code>facts.db</code> with its page.</li>
+          <li><b>Comparison</b> (“compare headcount”): one fact per company → a templated sentence with three citations.</li>
+          <li><b>Descriptive</b> (“HCLTech on GenAI?”): top passages → the QA model picks the span; the sentence around it is shown with its page.</li>
+          <li>Answers are verbatim spans or stored facts, so a citation cannot point to text that isn’t there.</li>
+        </ul>
+      </div>
+      <div>
+        <h3 style="margin-bottom:4px">Response of <code>POST /api/ask</code></h3>
+<pre>{
+  "status":  "answered",     // answered | not_found | out_of_scope
+  "answer":  "…",
+  "citations": [{ "company": "Infosys",
+                  "report":  "Integrated Annual Report 2025-26",
+                  "page":    &lt;PDF page&gt;,
+                  "quote":   "&lt;exact text&gt;",
+                  "verified": true }],
+  "trace":   { "passages": […], "gate": null,
+               "latency_ms": …, "tokens": … }
+}</pre>
+      </div>
+      <div>
+        <h3 style="margin-bottom:2px">Five demo questions and where each should end</h3>
+        <table>
+          <tr><th>Question</th><th style="width:34%">Expected exit</th></tr>
+          <tr><td>What was Infosys’s voluntary attrition in FY2025-26?</td><td>answer + citation</td></tr>
+          <tr><td>Compare the headcount of TCS, Infosys and HCLTech.</td><td>answer, three citations</td></tr>
+          <tr><td>How does HCLTech describe its GenAI investments?</td><td>answer + citations</td></tr>
+          <tr><td>What was TCS’s revenue in FY2029-30?</td><td style="color:var(--nf)"><b>Not found</b> (gate 4 or 6)</td></tr>
+          <tr><td>Should I buy Infosys shares?</td><td style="color:var(--oos)"><b>Out of scope</b> (gate 1)</td></tr>
+        </table>
+      </div>
+      <p class="small muted" style="margin:0">Runs on the laptop CPU, about 1–2 s per question, with about 750 MB of free models (bge-small embeddings, MiniLM reranker, RoBERTa-SQuAD2). No internet needed during the demo.</p>
+    </div>
+  </div>
+  <div class="foot"><span>Use Case 2 · Pipeline and workflow v0.3</span><span>5 / 9</span></div>
+</section>
+
+<!-- ============================ PAGE 5: SCREEN ============================ -->
+<section class="page">
+  <div class="hdr"><h2>5 · The screen: one page, two panels, one page viewer</h2><span class="tag">owner: member D · plain HTML + Chart.js, served by FastAPI</span></div>
+  <div class="row" style="gap:20px;align-items:flex-start">
+    <div class="wire" style="width:700px;flex:none">
+      <div class="chrome"><i></i><i></i><i></i><span>localhost:8000</span></div>
+      <div class="apphdr"><b>IT Annual Reports FY2025-26</b><span class="muted">TCS · Infosys · HCLTech · every number cited</span>
+        <nav><a class="on">Compare</a><a>Ask</a><a>Sources</a><a>Evaluation<em class="mk" style="right:-9px;top:-11px">6</em></a></nav></div>
+      <div class="wgrid">
+        <div class="wchart">
+          <div class="tabs"><a class="on">Revenue</a><a>Operating / EBIT margin<em class="mk" style="right:-9px;top:-11px">3</em></a><a>Headcount</a><a>Attrition</a><a>Geography</a></div>
+          <div class="wq">Revenue from operations, consolidated, ₹ crore</div>
+          <div class="bars">
+            <em class="mk" style="left:2px;top:4px">1</em>
+            <div class="grp"><div class="bar" style="height:78%"></div><div class="bar y2" style="height:86%"></div></div>
+            <div class="grp"><div class="bar" style="height:55%"></div><div class="bar y2" style="height:60%"></div></div>
+            <div class="grp"><div class="bar" style="height:36%"></div><div class="bar y2" style="height:40%"></div><em class="mk" style="right:-14px;top:52px">2</em></div>
+          </div>
+          <div class="blabels">
+            <div>TCS<small>p. N · p. N</small></div><div>Infosys<small>p. N · p. N</small></div><div>HCLTech<small>p. N · p. N</small></div>
+          </div>
+          <div class="wlegend"><span><i style="background:#9DB6E3"></i>FY2024-25</span><span><i style="background:var(--code)"></i>FY2025-26</span><span>illustrative bars: real values come from facts.db</span></div>
+          <div class="wnote">Consolidated, ₹ crore, years ending 31 March. Each bar’s source page is printed under it; click a bar to open the page.
+            On the margin tab: <b>HCLTech reports EBIT margin; TCS and Infosys report operating margin.</b></div>
+        </div>
+        <div class="wask">
+          <div class="inp">Ask about the three annual reports… <span class="btn">Ask</span></div>
+          <div class="chips"><span>Infosys attrition FY26?</span><span>Compare headcount</span><span>HCLTech on GenAI</span><span>TCS revenue FY30?</span><span>Buy Infosys?</span></div>
+          <div class="card okc"><em class="mk" style="right:-8px;top:-9px">4</em>
+            Infosys reports voluntary attrition of … % for FY2025-26 …<br>
+            <span class="cite">Infosys · Annual Report 2025-26 · p. N</span>
+          </div>
+          <div class="card nfc"><em class="mk" style="right:-8px;top:-9px">5</em>
+            <b>Not found in the reports.</b> Searched 12 passages across TCS, Infosys and HCLTech; none states FY2029-30 revenue.
+          </div>
+          <div class="card" style="border-color:var(--oos);background:var(--oos-bg)"><b>Out of scope.</b> I only answer from the three annual reports, and give no investment advice.</div>
+        </div>
+      </div>
+      <div class="viewer">
+        <div class="vh">Page viewer · TCS · Annual Report 2025-26 · PDF page N</div>
+        <div class="sheet"><i></i><i></i><i></i><i></i><i class="hl"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="small muted" style="margin-top:4px">The cited quote is highlighted on the rendered page. “Open PDF at this page” link beside it.</div>
+      </div>
+    </div>
+
+    <div class="col">
+      <h3>Demo script, 3 minutes (numbers match the red markers)</h3>
+      <ol class="steps">
+        <li><b>Compare → Revenue.</b> Three companies × two years, the source page under every bar. <em>(R1)</em></li>
+        <li><b>Click a bar.</b> The page viewer opens that PDF page with the figure highlighted. <em>(traceable)</em></li>
+        <li><b>Margin tab.</b> The note says HCLTech reports EBIT margin, so the comparison is labelled, not hidden. <em>(units and definitions stated)</em></li>
+        <li><b>Ask an answerable question.</b> Answer + citation chip; click it to see the page. <em>(R2)</em></li>
+        <li><b>Ask two unanswerable ones.</b> A future year gives “Not found”; “should I buy” gives “Out of scope”. <em>(honest refusals)</em></li>
+        <li><b>Evaluation tab.</b> Scores on the 20-question set. <em>(evidence of quality)</em></li>
+      </ol>
+      <div class="callout warn" style="margin-top:6px">Judges will type their own questions, including one the reports cannot answer. The same pipeline handles them, with no special cases for demo questions.</div>
+      <div class="callout" style="margin-top:8px">Why plain HTML: no build step, and FastAPI serves it. The brief says retrieval, citations and refusals matter more than polish. React can come later if there is time.</div>
+    </div>
+  </div>
+  <div class="foot"><span>Use Case 2 · Pipeline and workflow v0.3 · wireframe, not a final design</span><span>6 / 9</span></div>
+</section>
+
+<!-- ============================ PAGE 6: TEAM ============================ -->
+<section class="page">
+  <div class="hdr"><h2>6 · Who builds what: each member owns a part they can explain</h2><span class="tag">contracts frozen at 11:30; change one only with the consumer’s agreement</span></div>
+
+  <svg class="d" viewBox="0 0 1032 164">
+    <foreignObject x="0" y="55" width="220" height="60"><div class="n ui" style="border-top-width:4px"><b>A · Extraction & fact store</b><span>Docling on GPU · OCR / chart pass · facts.db</span></div></foreignObject>
+    <foreignObject x="270" y="55" width="220" height="60"><div class="n ui" style="border-top-width:4px"><b>B · Retrieval & Q&A</b><span>search · reranker · extractive QA · gates</span></div></foreignObject>
+    <foreignObject x="540" y="55" width="220" height="60"><div class="n ui" style="border-top-width:4px"><b>C · Metrics & API</b><span>dictionary · source choice · sign-off · FastAPI</span></div></foreignObject>
+    <foreignObject x="810" y="55" width="222" height="60"><div class="n ui" style="border-top-width:4px"><b>D · Frontend & evaluation</b><span>chart · ask panel · viewer · eval · README</span></div></foreignObject>
+    <path class="edge" d="M220,85 L270,85"/>
+    <text class="el b" x="245" y="79" text-anchor="middle">passages</text>
+    <path class="edge" d="M490,85 L540,85"/>
+    <text class="el b" x="515" y="79" text-anchor="middle">search()</text>
+    <path class="edge" d="M760,85 L810,85"/>
+    <text class="el b" x="785" y="79" text-anchor="middle">API</text>
+    <path class="edge" d="M110,55 C110,15 650,15 650,55"/>
+    <text class="el" x="380" y="17" text-anchor="middle">facts.db: facts, table cells, chart points</text>
+    <path class="edge" d="M380,115 C380,150 920,150 920,115"/>
+    <text class="el" x="650" y="160" text-anchor="middle">POST /api/ask response JSON (page 5)</text>
+  </svg>
+
+  <div class="cards" style="margin-top:8px">
+    <div class="mcard">
+      <h4>A · Extraction & fact store</h4><div class="own">extract/ · data/facts.db · sources.json</div>
+      <dl>
+        <dt>IT1 · BY 13:00</dt><dd>Docling on the GPU server; <code>facts.db</code> v1 for all three reports; source register.</dd>
+        <dt>IT2 · BY 14:30</dt><dd>Verification checks (text layer, agreement); passages + full-text index; vectors; OCR for TCS’s letter-spaced pages.</dd>
+        <dt>IT3 · BY 16:00</dt><dd>README run steps, source register, extraction stats; help label the eval set.</dd>
+        <dt>EXPLAINS TO JUDGES</dt><dd>Why a parser plus a vision pass, how each number is verified, the <code>facts.db</code> schema.</dd>
+      </dl>
+    </div>
+    <div class="mcard">
+      <h4>B · Retrieval & Q&A</h4><div class="own">rag/ (search, gates, prompt, verify)</div>
+      <dl>
+        <dt>IT1 · BY 13:00</dt><dd>BM25 search with company filter, fact lookup, reranker gate, extractive QA with its “no answer” gate.</dd>
+        <dt>IT2 · BY 14:30</dt><dd>Hybrid retrieval (RRF), comparison answers from facts, citation check, scope guard.</dd>
+        <dt>IT3 · BY 16:00</dt><dd>Tune gate thresholds on eval failures; record failed attempts.</dd>
+        <dt>EXPLAINS TO JUDGES</dt><dd>Hybrid retrieval, the gates, how a citation is verified.</dd>
+      </dl>
+    </div>
+    <div class="mcard">
+      <h4>C · Metrics & API</h4><div class="own">metrics/ · api/ (FastAPI)</div>
+      <dl>
+        <dt>IT1 · BY 13:00</dt><dd>Dictionary; revenue and headcount chosen from <code>facts.db</code> and signed off; <code>/api/ask</code>, <code>/api/metrics</code>.</dd>
+        <dt>IT2 · BY 14:30</dt><dd>Margin, attrition, geography; <code>/api/page</code> with highlight.</dd>
+        <dt>IT3 · BY 16:00</dt><dd>Mismatch notes; errors and timeouts; tests for the checks.</dd>
+        <dt>EXPLAINS TO JUDGES</dt><dd>How each chart value is traced and verified; the API contracts.</dd>
+      </dl>
+    </div>
+    <div class="mcard">
+      <h4>D · Frontend & evaluation</h4><div class="own">web/ · eval/ · REPORT.md</div>
+      <dl>
+        <dt>IT1 · BY 13:00</dt><dd>One page with chart and ask panel on the live API; first 10 eval questions.</dd>
+        <dt>IT2 · BY 14:30</dt><dd>Page viewer, citation chips, 20 questions and the scoreboard.</dd>
+        <dt>IT3 · BY 16:00</dt><dd>REPORT.md (300 words), demo script, two rehearsals.</dd>
+        <dt>EXPLAINS TO JUDGES</dt><dd>Screen design choices; how the evaluation works and what it scored.</dd>
+      </dl>
+    </div>
+  </div>
+  <h3 style="margin-top:12px">Contracts between members (agreed at 11:30, so all four can build in parallel against them)</h3>
+  <table>
+    <tr><th style="width:22%">Contract</th><th style="width:13%">From → to</th><th>Shape</th></tr>
+    <tr><td><code>facts.db</code></td><td>A → B, C, D</td><td>SQLite: <code>documents, pages, elements, table_cells, chart_points, facts, passages</code> (schema on page 3); only A writes it</td></tr>
+    <tr><td><code>search(query, companies, k)</code></td><td>B → C</td><td>ranked list of <code>{id, company, page, text, score}</code> over passages</td></tr>
+    <tr><td><code>GET /api/metrics</code></td><td>C → D</td><td>one record per company × metric × FY: <code>value, unit, page, bbox, quote, status, verified_by</code> (page 4)</td></tr>
+    <tr><td><code>POST /api/ask</code></td><td>B, C → D</td><td><code>{status, answer, citations[{company, report, page, bbox, quote, verified}], trace}</code> (page 5)</td></tr>
+    <tr><td><code>GET /api/page/{report}/{page}?quote=…</code></td><td>C → D</td><td>PNG of the PDF page with the quote highlighted; plus a link to the PDF at <code>#page=N</code></td></tr>
+  </table>
+  <div class="callout" style="margin-top:10px"><b>Everyone, all day:</b> write each failed attempt into the README the moment it happens. Commit at the end of each iteration. Write your own three-sentence contribution. Now: put names on A–D and note the download URL of each PDF for the source register. No API keys are needed anywhere.</div>
+  <div class="foot"><span>Use Case 2 · Pipeline and workflow v0.3</span><span>7 / 9</span></div>
+</section>
+
+<!-- ============================ PAGE 7: PLAN ============================ -->
+<section class="page">
+  <div class="hdr"><h2>7 · Today’s plan: three 90-minute iterations, each ending working, tested and committed</h2><span class="tag">times from the brief</span></div>
+
+  <svg class="d" viewBox="0 0 1032 104">
+    <rect x="10" y="26" width="159.8" height="44" rx="5" fill="#E4E8EE"/>
+    <rect x="169.8" y="26" width="53.3" height="44" rx="5" fill="#C9D0DA"/>
+    <rect x="223.1" y="26" width="159.8" height="44" rx="5" fill="#1C2230"/>
+    <rect x="382.9" y="26" width="159.8" height="44" rx="5" fill="#5A6272"/>
+    <rect x="542.6" y="26" width="159.8" height="44" rx="5" fill="#9AA2AF"/>
+    <rect x="702.4" y="26" width="106.5" height="44" rx="5" fill="#EAF1FB" stroke="#2F5FB3"/>
+    <rect x="808.9" y="26" width="213.1" height="44" rx="5" fill="#E6F4EC" stroke="#1E7A4C"/>
+    <g font-size="11" font-weight="700">
+      <text x="90" y="52" text-anchor="middle" fill="#1C2230">Design (done)</text>
+      <text x="196" y="52" text-anchor="middle" fill="#1C2230">Setup</text>
+      <text x="303" y="52" text-anchor="middle" fill="#fff">IT1 · skeleton</text>
+      <text x="463" y="52" text-anchor="middle" fill="#fff">IT2 · quality</text>
+      <text x="622" y="52" text-anchor="middle" fill="#fff">IT3 · evaluate</text>
+      <text x="755" y="52" text-anchor="middle" fill="#1C2230">Rehearse</text>
+      <text x="915" y="52" text-anchor="middle" fill="#1C2230">Demo + review + interview</text>
+    </g>
+    <g class="el" font-size="10" text-anchor="middle">
+      <text x="10" y="86" text-anchor="start">09:30</text><text x="170" y="86">11:00</text><text x="223" y="86">11:30</text>
+      <text x="383" y="86">13:00</text><text x="543" y="86">14:30</text><text x="702" y="86">16:00</text><text x="809" y="86">17:00</text><text x="1022" y="86" text-anchor="end">19:00</text>
+    </g>
+    <line x1="702.4" y1="14" x2="702.4" y2="76" stroke="#B42318" stroke-width="2.5"/>
+    <text x="707" y="16" font-size="10.5" font-weight="700" fill="#B42318">16:00 code freeze, final commit</text>
+    <path d="M169.8,20 l-6,-9 h12 z" fill="#B42318"/>
+    <text x="180" y="13" font-size="10" fill="#B42318" font-weight="700">we are here</text>
+  </svg>
+
+  <div class="icards" style="margin-top:6px">
+    <div class="icard">
+      <h4>IT1 · walking skeleton <span>11:30–13:00</span></h4>
+      <ul>
+        <li>Docling on the GPU server → <code>facts.db</code> v1 (started at 11:49)</li>
+        <li><code>/api/ask</code>: fact lookup + BM25 → reranker gate → extractive QA → “no answer” gate</li>
+        <li>Revenue and headcount chosen from <code>facts.db</code>, signed off</li>
+        <li>One page: chart and ask panel on the live API</li>
+      </ul>
+      <div class="done">Done when a question returns a cited answer and a bar shows its page. Commit “it1”.</div>
+    </div>
+    <div class="icard">
+      <h4>IT2 · quality <span>13:00–14:30</span></h4>
+      <ul>
+        <li>Vector index + RRF hybrid; scope guard</li>
+        <li>Citation check (gate 7) on every answer</li>
+        <li>Page viewer with the quote highlighted</li>
+        <li>Margin, attrition, geography + mismatch notes</li>
+        <li>20-question eval set and first scores</li>
+      </ul>
+      <div class="done">Done when the eval runs end to end. Commit “it2”.</div>
+    </div>
+    <div class="icard">
+      <h4>IT3 · evaluate and harden <span>14:30–16:00</span></h4>
+      <ul>
+        <li>Tune gate thresholds on eval failures; optional chart pass (Granite Vision)</li>
+        <li>README: run steps, source register, failed attempts, contributions</li>
+        <li>REPORT.md: 300 words, the 8 required points</li>
+        <li>Two timed demo rehearsals</li>
+      </ul>
+      <div class="done">Done when the final commit lands before 16:00.</div>
+    </div>
+  </div>
+
+  <div class="row" style="margin-top:10px">
+    <div class="col panel">
+      <h3>Evaluation plan</h3>
+      <ul>
+        <li><b>20 questions</b>: 10 single-company facts, 4 comparisons, 6 unanswerable (2 of them out of scope). Each has the expected company, page and answer, or “not found”.</li>
+        <li><b>Scores</b>: answer correctness (graded by hand) · citation accuracy (quote found on the cited page) · refusal accuracy (unanswerable → stopped; answerable → not refused) · latency p50 / p95.</li>
+        <li><b>Chart</b>: every value checked by hand against its page, reported as checked / total.</li>
+        <li>Run after each iteration; the results table goes in the README and feeds the failed-attempts log.</li>
+      </ul>
+    </div>
+    <div class="col panel">
+      <h3>Deliverables from the brief</h3>
+      <ul class="check">
+        <li>Git repository, final commit by 16:00</li>
+        <li>README: run steps · source register (title, FY, URL, download date) · failed attempts · three sentences per member</li>
+        <li>REPORT.md, 300 words: approach · tools, models, libraries · constraints · assumptions · top 5 design decisions · AI-assistant use · prior work · failed attempts</li>
+        <li>Demo: 3 answerable and 2 unanswerable questions; a chart with a page for every value</li>
+        <li>Each member answers questions on the part they built (15-minute technical interview may follow)</li>
+      </ul>
+    </div>
+  </div>
+  <div class="row" style="margin-top:10px">
+    <div class="col callout"><b>Checkpoints at 13:00 and 14:30 (5 minutes):</b> show it working on one laptop, run the tests, commit, then agree what is cut. Anyone stuck for more than 15 minutes says so at once.</div>
+    <div class="col callout warn"><b>If behind, cut in this order:</b> chart pass → geography metric → vector index (stay on BM25) → page image with highlight (link to the PDF page instead) → Evaluation tab (keep the scores table in the README). <b>Never cut:</b> citations, the “Not found” path, the source register.</div>
+  </div>
+  <div class="foot"><span>Use Case 2 · Pipeline and workflow v0.3</span><span>8 / 9</span></div>
+</section>
+
+<!-- ============================ PAGE 8: DECISIONS ============================ -->
+<section class="page">
+  <div class="hdr"><h2>8 · Design decisions, risks and stack</h2><span class="tag">the top 5 decisions feed REPORT.md</span></div>
+
+  <div class="dec">
+    <div class="dcard"><div class="num">1</div><h4>Page-level provenance, end to end</h4><p>Passages never cross pages, so every answer and every bar names one PDF page that anyone can open.</p></div>
+    <div class="dcard"><div class="num">2</div><h4>Keywords first, vectors second</h4><p>BM25 handles exact terms and figures; embeddings add paraphrases; merged by rank (RRF) with a quota per company so comparisons see all three.</p></div>
+    <div class="dcard"><div class="num">3</div><h4>Refusal is designed in</h4><p>A scope guard plus three gates (evidence, abstain, citation check) lead to one honest “Not found in the reports”.</p></div>
+    <div class="dcard"><div class="num">4</div><h4>Extractive, not generative</h4><p>Answers are rows from <code>facts.db</code> or exact spans picked by small local models. Nothing is generated, so nothing can be invented; free and offline.</p></div>
+    <div class="dcard"><div class="num">5</div><h4>Numbers are data, not text</h4><p>Extracted once into <code>facts.db</code> with unit, FY, page, box and checks. The chart and the Q&amp;A read the same verified facts; no LLM on the chart path.</p></div>
+  </div>
+
+  <div class="row" style="margin-top:12px">
+    <div class="col" style="flex:1.6">
+      <h3>Risks and mitigations</h3>
+      <table class="tight">
+        <tr><th style="width:42%">Risk</th><th>Mitigation</th></tr>
+        <tr><td>Companies use different terms: HCLTech has no “operating margin”, Infosys no “headcount” (measured today)</td><td>Per-company terms in the metric dictionary; the difference is stated under the chart</td></tr>
+        <tr><td>Charts, KPI tiles and tables lose structure as plain text (measured: TCS chart, Infosys tiles)</td><td>Docling for tables; charted metrics taken from tables; optional free chart pass, signed off by a person</td></tr>
+        <tr><td>Judges ask unexpected questions</td><td>One pipeline for every question; gates tuned on the eval set; refuse rather than guess</td></tr>
+        <tr><td>PDF page number differs from the printed one</td><td>Cite “PDF page N” and open the PDF at that page</td></tr>
+        <tr><td>No paid API; network trouble in the demo</td><td>Everything runs on the laptop, offline: free models, SQLite, FastAPI; backup recording</td></tr>
+        <tr><td>10 image-only pages (charts, photos)</td><td>Optional OCR pass (RapidOCR); until then listed in the README as a known gap</td></tr>
+      </table>
+    </div>
+    <div class="col" style="display:flex;flex-direction:column;gap:10px">
+      <div>
+        <h3>Stack</h3>
+        <div class="stack"><span>Python 3.12</span><span>Docling (GPU, sustain server)</span><span>PyMuPDF / PyMuPDF4LLM</span><span>SQLite + FTS5 (BM25)</span><span>bge-small embeddings</span><span>MiniLM cross-encoder reranker</span><span>RoBERTa-base SQuAD 2.0 (extractive QA)</span><span>RapidOCR + Granite Vision (optional)</span><span>FastAPI + Uvicorn</span><span>HTML + Chart.js</span><span>pytest</span></div>
+      </div>
+      <div>
+        <h3>Assumptions (the brief says: assume, note, go)</h3>
+        <ul>
+          <li>FY2025-26 = year ending 31 March 2026, the latest report of each company.</li>
+          <li>Consolidated figures, ₹ crore, unless the chart says otherwise.</li>
+          <li>Citations use PDF page numbers.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Out of scope (from the brief)</h3>
+        <p style="margin:0">Share-price prediction · investment advice · news, broker notes and websites beyond the reports.</p>
+      </div>
+    </div>
+  </div>
+  <div class="panel" style="margin-top:10px;padding:7px 11px">
+    <h3 style="margin-bottom:3px">Questions the judges are likely to ask, and our short answers</h3>
+    <table class="tight">
+      <tr><td style="width:27%"><b>Why no large language model?</b></td><td>Free compute only. Extractive answers are verbatim spans or stored facts, so they cannot be invented; the brief allows keyword search plus extractive answers.</td></tr>
+      <tr><td><b>How do you know a citation is right?</b></td><td>Gate 7 checks by code that the span is on the cited page and numbers match <code>facts.db</code>; chart values also get a person’s sign-off.</td></tr>
+      <tr><td><b>Why does HCLTech show EBIT margin?</b></td><td>Its report never says “operating margin”; we keep its own term and say so under the chart.</td></tr>
+      <tr><td><b>How do you read numbers inside charts?</b></td><td>The charted metrics come from tables. The optional chart pass (free Granite Vision model) feeds values only after a person checks them.</td></tr>
+      <tr><td><b>How did you use AI coding assistants?</b></td><td>Disclosed in REPORT.md: what was generated, and how each part was checked (tests, the eval set, reading the cited pages).</td></tr>
+    </table>
+  </div>
+  <div class="foot"><span>Use Case 2 · Pipeline and workflow v0.3</span><span>9 / 9</span></div>
+</section>
+
+</body>
+</html>

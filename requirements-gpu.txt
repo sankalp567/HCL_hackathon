@@ -1,0 +1,6 @@
+# Installed on the GPU server (sustain) on top of a CUDA build of torch (2.14.1+cu126 there).
+# docling: one-time PDF extraction (extract/docling_run.py)
+# transformers + accelerate: the self-hosted LLM (Qwen3-4B-Instruct-2507) used by the backend
+docling==2.143.0
+transformers>=5.21
+accelerate>=1.15
