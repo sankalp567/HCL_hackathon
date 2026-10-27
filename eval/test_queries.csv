@@ -1,0 +1,43 @@
+company_id,query,value,page
+tcs,What was the consolidated revenue from operations of TCS in FY2025-26 (in ₹ crore)?,267021,58
+tcs,What was the year-on-year revenue growth of TCS in FY2025-26 (in %)?,4.6,58
+tcs,What was the operating margin of TCS in FY2025-26 (in %)?,25.0,24
+tcs,What was the consolidated profit attributable to shareholders of TCS in FY2025-26 (in ₹ crore)?,49210,224
+tcs,What was the basic earnings per share of TCS in FY2025-26 (in ₹)?,136.01,224
+tcs,What was the total headcount of TCS as of March 31 2026?,584519,69
+tcs,What was the IT services attrition rate of TCS in FY2025-26 (in %)?,13.7,55
+tcs,What was the total dividend per share declared by TCS for FY2025-26 (in ₹)?,110,70
+infy,What was the consolidated revenue from operations of Infosys in FY2025-26 (in ₹ crore)?,178650,33
+infy,What was the year-on-year revenue growth of Infosys in FY2025-26 (in %)?,9.6,33
+infy,What was the adjusted operating margin of Infosys in FY2025-26 (in %)?,21.0,26
+infy,What was the consolidated profit attributable to owners of Infosys in FY2025-26 (in ₹ crore)?,29440,33
+infy,What was the basic earnings per share of Infosys in FY2025-26 (in ₹)?,71.58,16
+infy,What was the total number of employees of Infosys on a consolidated basis as of March 31 2026?,328594,40
+infy,What was the voluntary attrition rate of Infosys in FY2025-26 (in %)?,12.6,144
+infy,What was the total dividend per share declared by Infosys for FY2025-26 (in ₹)?,48,38
+hcl,What was the consolidated revenue from operations of HCLTech in FY2025-26 (in ₹ crore)?,130144,115
+hcl,What was the year-on-year revenue growth of HCLTech in FY2025-26 (in %)?,11.2,115
+hcl,What was the EBIT margin of HCLTech in FY2025-26 (in %)?,17.2,8
+hcl,What was the consolidated profit for the year of HCLTech in FY2025-26 (in ₹ crore)?,16642,115
+hcl,What was the basic earnings per share of HCLTech in FY2025-26 (in ₹)?,61.46,376
+hcl,What was the total headcount of HCLTech as of March 31 2026?,227181,94
+hcl,What was the IT services voluntary attrition rate of HCLTech in FY2025-26 (in %)?,12.5,94
+hcl,What was the total dividend per share declared by HCLTech for FY2025-26 (in ₹)?,60,8
+tcs|infy|hcl,Which company had the highest consolidated revenue from operations in FY2025-26?,tcs,tcs:58|infy:33|hcl:115
+tcs|infy|hcl,Compare the consolidated revenue from operations of TCS Infosys and HCLTech in FY2025-26 (in ₹ crore).,tcs:267021|infy:178650|hcl:130144,tcs:58|infy:33|hcl:115
+tcs|infy|hcl,Which company had the fastest year-on-year revenue growth in FY2025-26?,hcl,tcs:58|infy:33|hcl:115
+tcs|infy|hcl,Compare the year-on-year revenue growth of TCS Infosys and HCLTech in FY2025-26 (in %).,tcs:4.6|infy:9.6|hcl:11.2,tcs:58|infy:33|hcl:115
+tcs|infy|hcl,Which company had the highest operating margin in FY2025-26?,tcs,tcs:24|infy:26|hcl:8
+tcs|infy|hcl,Compare the operating margins of TCS Infosys and HCLTech in FY2025-26 (in %).,tcs:25.0|infy:21.0|hcl:17.2,tcs:24|infy:26|hcl:8
+tcs|infy|hcl,Compare the consolidated net profit of TCS Infosys and HCLTech in FY2025-26 (in ₹ crore).,tcs:49210|infy:29440|hcl:16642,tcs:224|infy:33|hcl:115
+tcs|infy|hcl,Which company had the highest basic earnings per share in FY2025-26?,tcs,tcs:224|infy:16|hcl:376
+tcs|infy|hcl,Which company had the largest headcount as of March 31 2026?,tcs,tcs:69|infy:40|hcl:94
+tcs|infy|hcl,Compare the headcount of TCS Infosys and HCLTech as of March 31 2026.,tcs:584519|infy:328594|hcl:227181,tcs:69|infy:40|hcl:94
+tcs|infy|hcl,What was the combined headcount of TCS Infosys and HCLTech as of March 31 2026?,1140294,tcs:69|infy:40|hcl:94
+tcs|infy|hcl,Which company had the lowest attrition rate in FY2025-26?,hcl,tcs:55|infy:144|hcl:94
+tcs|infy|hcl,Compare the attrition rates of TCS Infosys and HCLTech in FY2025-26 (in %).,tcs:13.7|infy:12.6|hcl:12.5,tcs:55|infy:144|hcl:94
+tcs|infy|hcl,Compare the total dividend per share of TCS Infosys and HCLTech for FY2025-26 (in ₹).,tcs:110|infy:48|hcl:60,tcs:70|infy:38|hcl:8
+tcs|infy,How much higher was TCS's consolidated revenue than Infosys's in FY2025-26 (in ₹ crore)?,88371,tcs:58|infy:33
+infy|hcl,Which company had more employees as of March 31 2026: Infosys or HCLTech?,infy,infy:40|hcl:94
+tcs|hcl,What was the gap between the operating margins of TCS and HCLTech in FY2025-26 (in percentage points)?,7.8,tcs:24|hcl:8
+infy|hcl,Which company paid a higher total dividend per share for FY2025-26: Infosys or HCLTech?,hcl,infy:38|hcl:8
