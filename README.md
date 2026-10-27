@@ -14,27 +14,41 @@ Design document with diagrams: [`docs/pipeline.pdf`](docs/pipeline.pdf).
 PDFs ──► Docling (GPU): text, tables as cell grids, page + box ──► facts.db (SQLite)
                                                                     ├─ facts: one row per number, with unit, FY, page, box, quote, checks
                                                                     ├─ table cells, passages + full-text index (FTS5)
-question ─► scope guard ─► facts lookup + keyword search ─► answer ─► check every sentence ─► UI (streamed, cited)
-                                   (metric lookups are answered from facts; other questions by Qwen3-4B)
+question ─► scope rules ─► model check: another company? only part of a metric, or a value computed from it? which metric?
+         ─► facts lookup + keyword search ─► answer ─► check every sentence ─► UI (streamed, cited)
+            (metric lookups are answered from facts; other questions by Qwen3-30B-A3B, with Qwen3-4B as fallback)
 ```
 
 1. **Extraction (once, offline):** `extract/docling_run.py` turns each report into Docling JSON on a GPU (layout model + TableFormer). `extract/build_facts.py` builds `data/facts.db`: tables keep their structure, numbers are parsed (Indian and Western digit grouping, ₹ crore, brackets for negatives), each company's own wording is mapped to a metric (`extract/metrics.yaml`, e.g. HCLTech's "EBIT margin", Infosys's "turnover rate"), and every number is checked against the page's text layer and against other places in the report that state it. Consolidated figures win over standalone ones (view `best_facts`).
-2. **Answering:** a question naming a metric ("compare revenue", "Infosys attrition FY26") is answered straight from `facts.db`. Other questions retrieve passages (BM25 with metric synonyms) plus matching facts, and a self-hosted **Qwen3-4B-Instruct-2507** answers only from those numbered sources. Afterwards every sentence is checked: its numbers must appear in the sources it cites (otherwise the citation is re-pointed, or the sentence removed).
+2. **Answering:** keyword rules handle the common cases instantly. One short model call then checks what rules miss, choosing only from fixed lists and never supplying a number:
+   - a question about a company we don't cover ("apples company revenue") is answered "Not found", and one asking for investment advice in any wording ("is it a good investment", "should I short it") "Out of scope";
+   - a question about only part of a metric ("revenue from North America") or a value computed from it ("revenue growth") is answered from the report's text, not from the metric template;
+   - wording the rules don't know ("staff numbers trend for infy") is mapped to a metric and its chart.
+
+   A question naming a metric ("compare revenue", "Infosys attrition FY26") is answered straight from `facts.db`. Other questions retrieve passages (BM25 with metric synonyms) plus matching facts, and the self-hosted **Qwen3-30B-A3B-Instruct-2507** (FP8, vLLM on an A100) answers only from those numbered sources; **Qwen3-4B-Instruct-2507** on a second server is the fallback. Every sentence is then checked: its numbers must appear in the sources it cites (otherwise the citation is re-pointed, or the sentence removed). Model checks and model answers are cached by exact question, so a repeated question costs no model call.
 3. **UI:** streamed answers (SSE) with citation cards that open the cited PDF page with the cell or passage highlighted; comparison chart, table and insights built from the same facts.
 
 ## Results (`eval/`)
 
-31 questions: numeric lookups for every metric and company, comparisons, descriptive questions, unanswerable and out-of-scope ones. Citations are checked against each PDF page's own text layer, not against our database.
+43 questions: numeric lookups for every metric and company, comparisons, descriptive questions, unanswerable and out-of-scope ones, and 12 adversarial ones: companies we don't cover (Apple, Microsoft, Tata Motors), years the reports lack, investment advice in other words, and controls that must still be answered. Citations are checked against each PDF page's own text layer, not against our database.
 
 | Score | Result |
 |---|---|
-| Expected outcome (answered / not found / out of scope) | 31/31 (100%) |
-| Numeric answers with the expected numbers | 20/21 (95%) |
+| Expected outcome (answered / not found / out of scope) | 43/43 (100%) |
+| Numeric answers with the expected numbers | 25/25 (100%) |
 | Descriptive answers mentioning the expected subject | 4/4 |
-| Numeric claims whose numbers are on a cited PDF page | 35/35 (100%) |
-| Latency p50 / p95 | ≈0 s (answered from facts) / 4.5 s (model) |
+| Numeric claims whose numbers are on a cited PDF page | 41/41 (100%) |
+| Latency p50 / p95 | 1.6 s / 5.7 s for new questions; ≈0 s / 4.2 s when the question check is cached |
 
-The miss: asked for Infosys's dividend per share, the model gave the final dividend (₹25, correctly cited) instead of the year's total (₹48). Full table: [`eval/results.md`](eval/results.md).
+Full table: [`eval/results.md`](eval/results.md). We chose the model by measurement; the two models were run separately on the first 31 questions:
+
+| | Qwen3-4B (sustain, RTX A4000) | Qwen3-30B-A3B FP8 (ramanujan, A100) |
+|---|---|---|
+| Numeric answers with the expected numbers | 20/21 (gave Infosys's final dividend, ₹25, not the year's ₹48) | 21/21 |
+| Numeric claims on a cited page | 35/35 | 36/36 |
+| Latency p95 | 6.5 s | 4.2 s |
+| Choosing metric and chart for 12 unusual phrasings | 11/12 | 12/12 |
+| Question check on 16 tricky questions (other companies, parts, computed values) | 15/16 | 16/16 |
 
 ## Run it
 
@@ -47,16 +61,16 @@ uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python -r requi
 # backend + UI on http://127.0.0.1:8000, answers from facts and extracts only (no model needed)
 .venv/bin/python -m uvicorn app.main:app --port 8000
 
-# with the self-hosted model: on the GPU server, copy serve/run.py, serve/hf_server.py and a run.json
-# (serve/run.sustain.json is ours: engine "transformers", GPU 1, port 8002; engine "vllm" also works), then
+# with the self-hosted models: on each GPU server, copy serve/run.py (and serve/hf_server.py) with a run.json, then
 python run.py          # shows up in ps / nvidia-smi only as `python run.py`
-# on the laptop: tunnel to it and point the backend at it. Several servers can be listed; the next one is tried
-# when one does not answer (ours: sustain on 8002, the ramanujan safety net on 8001, serve/run.ramanujan.json)
-ssh -N -L 8002:127.0.0.1:8002 sustain &   ssh -N -L 8001:127.0.0.1:8001 ramanujan &
-LLM_BACKEND=vllm LLM_BASE_URL="http://127.0.0.1:8002/v1,http://127.0.0.1:8001/v1" LLM_MODEL=qwen3-4b \
+# ours: serve/run.ramanujan.json (Qwen3-30B-A3B FP8, vLLM, A100, port 8001; `python run.py --download-only` first)
+#       serve/run.sustain.json   (Qwen3-4B, transformers, RTX A4000, port 8002; the fallback)
+# on the laptop: tunnel to both and list them in order, with one model name per server
+ssh -N -L 8001:127.0.0.1:8001 ramanujan &   ssh -N -L 8002:127.0.0.1:8002 sustain &
+LLM_BACKEND=vllm LLM_BASE_URL="http://127.0.0.1:8001/v1,http://127.0.0.1:8002/v1" LLM_MODEL="qwen3-30b-a3b,qwen3-4b" \
   .venv/bin/python -m uvicorn app.main:app --port 8000
 
-.venv/bin/python -m pytest -q          # 91 tests
+.venv/bin/python -m pytest -q          # 115 tests
 .venv/bin/python eval/run_eval.py      # against a running backend; writes eval/results.md
 ```
 
@@ -83,7 +97,10 @@ Only these three reports are used; no news, broker notes or websites.
 7. A header row Docling did not mark mixed up standalone and consolidated margins for Infosys (21.9% vs 20.3%), and a section heading leaked a "discount rate" into operating margin. Fixed header and label handling.
 8. The model refused "Infosys voluntary attrition" although the fact was retrieved: the defining footnote was not attached and the context was clipped. Attaching table footnotes fixed it.
 9. vLLM 0.32 ships PyTorch for CUDA 13; the servers' driver supports CUDA 12.8. Pinned vLLM 0.11.0, and transformers below 5 (vLLM 0.11 calls a tokenizer method that transformers 5 removed).
-10. The evaluation found four more bugs (an uncovered company answered, "how many" sent to the model, a correct line removed by the checker, the dividend miss); three are fixed.
+10. The evaluation found four more bugs (an uncovered company answered, "how many" sent to the model, a correct line removed by the checker, the dividend miss); three are fixed, and the 30B model fixed the fourth.
+11. Letting the model write a free-form answer plan (what to show: text, chart, table) failed: the 4B model often answered instead of planning, inventing reasons and claiming dividend data "is not available". Restricting it to choices from fixed lists, then checking those choices, worked.
+12. "what was apples company revenue" was answered with our three companies' revenue: the keyword gate knew only a list of IT companies. The model check now catches companies we don't cover (16/16 on our probe set with the 30B). A single "whole metric?" flag first missed growth and per-employee questions; separate "part" and "computed" flags fixed that.
+13. Two more from trying the app: "what is tcs revenue was there in year 2023?" was answered with FY2025-26 figures (a bare year was ignored; it now means the fiscal year ending that March, and an answer that gives no figure for a figure question is "Not found"), and "Is Infosys a good investment right now?" slipped past the keyword scope rule (the model check now flags investment advice in any wording). Both are in the evaluation now, with ten similar adversarial questions.
 
 ## Team
 
