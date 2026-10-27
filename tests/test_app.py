@@ -15,6 +15,7 @@ from app.config import ROOT, get_settings
 from app.llm import OpenAICompatLLM
 from app.main import create_app
 from app.qa import parse_citations, verify_answer
+from app.retrieval import understand
 
 # A metric lookup is answered from facts.db without the model; a descriptive question goes to the model.
 MODEL_QUESTION = "How does Infosys describe its voluntary attrition in FY2025-26?"
@@ -241,6 +242,17 @@ def test_metric_lookup_is_answered_from_facts_without_the_model(settings):
     assert final["answer"] == "Infosys attrition, FY2025-26: 14.1% [1]."
     assert [s["status"] for s in final["sentences"]] == ["supported"]
     assert done_of(events)["backend"] == "facts" and done_of(events)["status"] == "answered"
+
+
+@pytest.mark.parametrize("question, metric", [
+    ("Compare headcount", "headcount"),
+    ("Give me pychart for employee head for all three company", "headcount"),   # typed in the UI; was missed
+    ("How many employees does TCS have?", "headcount"),
+    ("Compare operating margins", "operating_margin"),
+    ("Show net profit comparison", "net_profit"),
+])
+def test_understand_finds_the_metric(question, metric):
+    assert understand(question).metric == metric
 
 
 SOURCES = [{"n": 1, "company": "TCS", "text": "TCS revenue from operations FY2025-26: 2,67,021"},
