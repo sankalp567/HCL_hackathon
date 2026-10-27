@@ -203,7 +203,7 @@ svg.d text { font-family: "Noto Sans", "DejaVu Sans", Arial, sans-serif; }
       <h1>IT Annual Reports, Compared and Cited</h1>
       <div class="sub">TCS · Infosys · HCLTech, FY2025-26: how the application works, end to end (design before build)</div>
     </div>
-    <div class="meta">HCLTech AI Hackathon · IIT Gandhinagar<br>Use Case 2: IT Companies in India<br>27 Oct 2026 · pipeline v0.3 · free, local tools only</div>
+    <div class="meta">HCLTech AI Hackathon · IIT Gandhinagar<br>Use Case 2: IT Companies in India<br>27 Oct 2026 · pipeline v0.4, as built by 16:00 · evaluation 43/43 expected outcomes, 100% of cited numbers on the cited page · free, local tools only</div>
   </div>
   <p class="lede"><b style="color:var(--ink)">Two jobs, one evidence base.</b> <b style="color:var(--ink)">R1</b>: a comparison chart where every value carries the report page it came from, with units and fiscal years matched or the mismatch stated.
     <b style="color:var(--ink)">R2</b>: a question box that answers only from the three annual reports, cites company · report · page for every answer, and says “Not found in the reports” when the evidence is absent.</p>
@@ -234,7 +234,7 @@ svg.d text { font-family: "Noto Sans", "DejaVu Sans", Arial, sans-serif; }
     <foreignObject x="495" y="40" width="140" height="90"><div class="n data"><b>Search index</b><span>passages tagged company · report · page</span></div></foreignObject>
     <foreignObject x="495" y="180" width="140" height="90"><div class="n data"><b>facts.db (SQLite)</b><span>every number with unit, FY, page, box, quote, checks</span></div></foreignObject>
 
-    <foreignObject x="665" y="40" width="170" height="90"><div class="n code"><b>POST /api/ask</b><span>fact lookup or search → reranker gate → extractive QA → citation check</span></div></foreignObject>
+    <foreignObject x="665" y="40" width="170" height="90"><div class="n code"><b>POST /api/ask</b><span>rules + fixed-choice model check → fact lookup or BM25 search → Qwen3-30B (vLLM) → every sentence checked → citations</span></div></foreignObject>
     <foreignObject x="672" y="140" width="156" height="30"><div class="n llm" style="padding:2px 6px;align-items:center"><b style="font-size:10px">Local models · laptop CPU</b></div></foreignObject>
     <foreignObject x="665" y="180" width="170" height="90"><div class="n code"><b>GET /api/metrics</b><span>verified facts only; no LLM at request time</span></div></foreignObject>
     <foreignObject x="665" y="320" width="170" height="90"><div class="n code"><b>GET /api/page</b><span>renders the cited page and highlights the cell, bar or quote</span></div></foreignObject>
@@ -276,9 +276,9 @@ svg.d text { font-family: "Noto Sans", "DejaVu Sans", Arial, sans-serif; }
   </div>
   <div class="row" style="margin-top:9px">
     <div class="callout col"><b>R1 path:</b> PDFs → Docling tables → normalise + verify → <code>facts.db</code> → choose source, person signs off → <code>GET /api/metrics</code> → chart. Pages 2–4.</div>
-    <div class="callout col"><b>R2 path:</b> question → <code>POST /api/ask</code> → scope guard → fact lookup, or search + reranker → extractive QA picks the exact span → answer with citations, or “Not found in the reports”. Page 5.</div>
+    <div class="callout col"><b>R2 path:</b> question → <code>POST /api/ask</code> → scope rules + a fixed-choice model check (other companies, partial or computed values, advice, chart type) → fact lookup (template, no model), or BM25 search → Qwen3-30B-A3B answers only from numbered sources → every sentence checked against what it cites → answer with citations, or “Not found in the reports”. Page 5.</div>
   </div>
-  <div class="foot"><span>Use Case 2 · Pipeline and workflow v0.3 · design document, nothing built yet</span><span>1 / 9</span></div>
+  <div class="foot"><span>Use Case 2 · Pipeline and workflow v0.4 · as built, 27 Oct 16:00</span><span>1 / 9</span></div>
 </section>
 
 <!-- ============================ PAGE 2: EXTRACTION ============================ -->
@@ -331,7 +331,7 @@ svg.d text { font-family: "Noto Sans", "DejaVu Sans", Arial, sans-serif; }
       </ul>
     </div>
   </div>
-  <div class="foot"><span>Use Case 2 · Pipeline and workflow v0.3</span><span>2 / 9</span></div>
+  <div class="foot"><span>Use Case 2 · Pipeline and workflow v0.4</span><span>2 / 9</span></div>
 </section>
 
 <!-- ============================ PAGE 3: FACT STORE ============================ -->
@@ -388,7 +388,7 @@ FROM facts WHERE metric = 'revenue'
     <tr><td>HCLTech</td><td><code>profit_to_owners</code></td><td>FY2025-26</td><td class="num">16,642</td><td>₹ crore</td><td>Consolidated P&amp;L (printed p. 373)</td><td class="num">376</td><td>in text layer</td><td>checked by code</td></tr>
     <tr><td>TCS</td><td><code>revenue</code></td><td>FY2025-26</td><td class="num">from chart</td><td>₹ crore</td><td>“Revenue trend” bar chart</td><td class="num">24</td><td>vision pass, then text layer after de-spacing</td><td>pending</td></tr>
   </table>
-  <div class="foot"><span>Use Case 2 · Pipeline and workflow v0.3</span><span>3 / 9</span></div>
+  <div class="foot"><span>Use Case 2 · Pipeline and workflow v0.4</span><span>3 / 9</span></div>
 </section>
 
 <!-- ============================ PAGE 3: METRICS ============================ -->
@@ -456,7 +456,7 @@ FROM facts WHERE metric = 'revenue'
 }</pre>
     </div>
   </div>
-  <div class="foot"><span>Use Case 2 · Pipeline and workflow v0.3</span><span>4 / 9</span></div>
+  <div class="foot"><span>Use Case 2 · Pipeline and workflow v0.4</span><span>4 / 9</span></div>
 </section>
 
 <!-- ============================ PAGE 4: Q&A ============================ -->
@@ -472,7 +472,7 @@ FROM facts WHERE metric = 'revenue'
         <foreignObject x="0" y="140" width="300" height="52"><div class="n code"><b><i class="k">2</i>Understand the question<i class="it">IT1</i></b><span>detect company and fiscal year; add dictionary synonyms</span></div></foreignObject>
         <foreignObject x="0" y="210" width="300" height="52"><div class="n code"><b><i class="k">3</i>Retrieve passages + facts<i class="it">IT1</i><i class="it i2">IT2</i></b><span>BM25 (+ vectors, RRF), ≤4 per company; matching facts and table cells</span></div></foreignObject>
         <foreignObject x="0" y="280" width="300" height="52"><div class="n gate"><b><i class="k">4</i>Evidence gate<i class="it">IT1</i></b><span>reranker score too low → stop here</span></div></foreignObject>
-        <foreignObject x="0" y="350" width="300" height="52"><div class="n llm"><b><i class="k">5</i>Extractive answer<i class="it">IT1</i></b><span>a fact row, or a QA model (RoBERTa, SQuAD 2.0) picks the exact span</span></div></foreignObject>
+        <foreignObject x="0" y="350" width="300" height="52"><div class="n llm"><b><i class="k">5</i>Answer<i class="it">IT1</i></b><span>a fact row (template, no model), or Qwen3-30B-A3B via vLLM on ramanujan (Qwen3-4B on sustain as fallback) writes from the numbered sources</span></div></foreignObject>
         <foreignObject x="0" y="420" width="300" height="52"><div class="n gate"><b><i class="k">6</i>Abstain gate<i class="it">IT1</i></b><span>the QA model’s “no answer” score wins</span></div></foreignObject>
         <foreignObject x="0" y="490" width="300" height="52"><div class="n gate"><b><i class="k">7</i>Citation check<i class="it i2">IT2</i></b><span>the span is on the cited page; numbers match facts.db</span></div></foreignObject>
         <foreignObject x="0" y="560" width="300" height="52"><div class="n ok"><b>Answer + citation chips</b><span>company · report · PDF page → opens the page viewer</span></div></foreignObject>
@@ -543,10 +543,10 @@ FROM facts WHERE metric = 'revenue'
           <tr><td>Should I buy Infosys shares?</td><td style="color:var(--oos)"><b>Out of scope</b> (gate 1)</td></tr>
         </table>
       </div>
-      <p class="small muted" style="margin:0">Runs on the laptop CPU, about 1–2 s per question, with about 750 MB of free models (bge-small embeddings, MiniLM reranker, RoBERTa-SQuAD2). No internet needed during the demo.</p>
+      <p class="small muted" style="margin:0">Facts answer in about 10 ms; model answers in about 4 s (p95 4.2 s) from Qwen3-30B-A3B (FP8, vLLM, one A100 on ramanujan) with Qwen3-4B on sustain as fallback, both reached through SSH tunnels and visible on the servers only as <code>python run.py</code>. Model checks and answers are cached per question; follow-ups take company, metric and year from the chat's earlier questions.</p>
     </div>
   </div>
-  <div class="foot"><span>Use Case 2 · Pipeline and workflow v0.3</span><span>5 / 9</span></div>
+  <div class="foot"><span>Use Case 2 · Pipeline and workflow v0.4</span><span>5 / 9</span></div>
 </section>
 
 <!-- ============================ PAGE 5: SCREEN ============================ -->
@@ -608,7 +608,7 @@ FROM facts WHERE metric = 'revenue'
       <div class="callout" style="margin-top:8px">Why plain HTML: no build step, and FastAPI serves it. The brief says retrieval, citations and refusals matter more than polish. React can come later if there is time.</div>
     </div>
   </div>
-  <div class="foot"><span>Use Case 2 · Pipeline and workflow v0.3 · wireframe, not a final design</span><span>6 / 9</span></div>
+  <div class="foot"><span>Use Case 2 · Pipeline and workflow v0.4 · wireframe, not a final design</span><span>6 / 9</span></div>
 </section>
 
 <!-- ============================ PAGE 6: TEAM ============================ -->
@@ -617,7 +617,7 @@ FROM facts WHERE metric = 'revenue'
 
   <svg class="d" viewBox="0 0 1032 164">
     <foreignObject x="0" y="55" width="220" height="60"><div class="n ui" style="border-top-width:4px"><b>A · Extraction & fact store</b><span>Docling on GPU · OCR / chart pass · facts.db</span></div></foreignObject>
-    <foreignObject x="270" y="55" width="220" height="60"><div class="n ui" style="border-top-width:4px"><b>B · Retrieval & Q&A</b><span>search · reranker · extractive QA · gates</span></div></foreignObject>
+    <foreignObject x="270" y="55" width="220" height="60"><div class="n ui" style="border-top-width:4px"><b>B · Retrieval & Q&A</b><span>rules + model check · facts · BM25 · Qwen3 · sentence check · gates</span></div></foreignObject>
     <foreignObject x="540" y="55" width="220" height="60"><div class="n ui" style="border-top-width:4px"><b>C · Metrics & API</b><span>dictionary · source choice · sign-off · FastAPI</span></div></foreignObject>
     <foreignObject x="810" y="55" width="222" height="60"><div class="n ui" style="border-top-width:4px"><b>D · Frontend & evaluation</b><span>chart · ask panel · viewer · eval · README</span></div></foreignObject>
     <path class="edge" d="M220,85 L270,85"/>
@@ -645,7 +645,7 @@ FROM facts WHERE metric = 'revenue'
     <div class="mcard">
       <h4>B · Retrieval & Q&A</h4><div class="own">rag/ (search, gates, prompt, verify)</div>
       <dl>
-        <dt>IT1 · BY 13:00</dt><dd>BM25 search with company filter, fact lookup, reranker gate, extractive QA with its “no answer” gate.</dd>
+        <dt>IT1 · BY 13:00</dt><dd>BM25 search with company filter, fact lookup, evidence gate, self-hosted model with its NOT_FOUND gate.</dd>
         <dt>IT2 · BY 14:30</dt><dd>Hybrid retrieval (RRF), comparison answers from facts, citation check, scope guard.</dd>
         <dt>IT3 · BY 16:00</dt><dd>Tune gate thresholds on eval failures; record failed attempts.</dd>
         <dt>EXPLAINS TO JUDGES</dt><dd>Hybrid retrieval, the gates, how a citation is verified.</dd>
@@ -680,7 +680,7 @@ FROM facts WHERE metric = 'revenue'
     <tr><td><code>GET /api/page/{report}/{page}?quote=…</code></td><td>C → D</td><td>PNG of the PDF page with the quote highlighted; plus a link to the PDF at <code>#page=N</code></td></tr>
   </table>
   <div class="callout" style="margin-top:10px"><b>Everyone, all day:</b> write each failed attempt into the README the moment it happens. Commit at the end of each iteration. Write your own three-sentence contribution. Now: put names on A–D and note the download URL of each PDF for the source register. No API keys are needed anywhere.</div>
-  <div class="foot"><span>Use Case 2 · Pipeline and workflow v0.3</span><span>7 / 9</span></div>
+  <div class="foot"><span>Use Case 2 · Pipeline and workflow v0.4</span><span>7 / 9</span></div>
 </section>
 
 <!-- ============================ PAGE 7: PLAN ============================ -->
@@ -719,7 +719,7 @@ FROM facts WHERE metric = 'revenue'
       <h4>IT1 · walking skeleton <span>11:30–13:00</span></h4>
       <ul>
         <li>Docling on the GPU server → <code>facts.db</code> v1 (started at 11:49)</li>
-        <li><code>/api/ask</code>: fact lookup + BM25 → reranker gate → extractive QA → “no answer” gate</li>
+        <li><code>/api/ask</code>: rules + model check → fact lookup + BM25 → evidence gate → Qwen3-30B → sentence check → “no answer” gate</li>
         <li>Revenue and headcount chosen from <code>facts.db</code>, signed off</li>
         <li>One page: chart and ask panel on the live API</li>
       </ul>
@@ -773,7 +773,7 @@ FROM facts WHERE metric = 'revenue'
     <div class="col callout"><b>Checkpoints at 13:00 and 14:30 (5 minutes):</b> show it working on one laptop, run the tests, commit, then agree what is cut. Anyone stuck for more than 15 minutes says so at once.</div>
     <div class="col callout warn"><b>If behind, cut in this order:</b> chart pass → geography metric → vector index (stay on BM25) → page image with highlight (link to the PDF page instead) → Evaluation tab (keep the scores table in the README). <b>Never cut:</b> citations, the “Not found” path, the source register.</div>
   </div>
-  <div class="foot"><span>Use Case 2 · Pipeline and workflow v0.3</span><span>8 / 9</span></div>
+  <div class="foot"><span>Use Case 2 · Pipeline and workflow v0.4</span><span>8 / 9</span></div>
 </section>
 
 <!-- ============================ PAGE 8: DECISIONS ============================ -->
@@ -804,7 +804,7 @@ FROM facts WHERE metric = 'revenue'
     <div class="col" style="display:flex;flex-direction:column;gap:10px">
       <div>
         <h3>Stack</h3>
-        <div class="stack"><span>Python 3.12</span><span>Docling (GPU, sustain server)</span><span>PyMuPDF / PyMuPDF4LLM</span><span>SQLite + FTS5 (BM25)</span><span>bge-small embeddings</span><span>MiniLM cross-encoder reranker</span><span>RoBERTa-base SQuAD 2.0 (extractive QA)</span><span>RapidOCR + Granite Vision (optional)</span><span>FastAPI + Uvicorn</span><span>HTML + Chart.js</span><span>pytest</span></div>
+        <div class="stack"><span>Python 3.12</span><span>Docling (GPU, sustain server)</span><span>PyMuPDF / PyMuPDF4LLM</span><span>SQLite + FTS5 (BM25)</span><span>Qwen3-30B-A3B-Instruct-2507 (FP8) · vLLM 0.11 · A100</span><span>Qwen3-4B-Instruct-2507 fallback (transformers, A4000)</span><span>Next, measured: RAG/ ChromaDB chunks + MY part/ BM25·RRF·re-ranker (README)</span><span>RapidOCR + Granite Vision (optional)</span><span>FastAPI + Uvicorn</span><span>HTML + Chart.js</span><span>pytest</span></div>
       </div>
       <div>
         <h3>Assumptions (the brief says: assume, note, go)</h3>
@@ -830,7 +830,7 @@ FROM facts WHERE metric = 'revenue'
       <tr><td><b>How did you use AI coding assistants?</b></td><td>Disclosed in REPORT.md: what was generated, and how each part was checked (tests, the eval set, reading the cited pages).</td></tr>
     </table>
   </div>
-  <div class="foot"><span>Use Case 2 · Pipeline and workflow v0.3</span><span>9 / 9</span></div>
+  <div class="foot"><span>Use Case 2 · Pipeline and workflow v0.4</span><span>9 / 9</span></div>
 </section>
 
 </body>
