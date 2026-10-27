@@ -7,6 +7,8 @@ vLLM elsewhere:   LLM_BACKEND=vllm LLM_BASE_URL=http://127.0.0.1:8001/v1 uvicorn
 SSE contract of POST /api/ask ({"question": str, "companies"?: [str]}), one JSON object per event:
   meta       {query_id, understood: {companies, metric, fy, named}, sources: [{n, company, report, pdf, doc_id, page, kind, score}]}
   token      {t}                      a piece of the answer text, with [n] citation markers
+  final      {answer, sentences: [{text, status: supported|repaired|uncited|removed}]}
+                                      the checked answer; the UI replaces the streamed text with it
   citations  {citations: [{n, company, report, pdf, doc_id, page, kind, quote, bbox, verified, fact_id, passage_id}]}
   notice     {message}                e.g. the model was unavailable and the extractive backend answered
   error      {message}

@@ -16,7 +16,8 @@ from pathlib import Path
 from app.config import Settings
 from app.db import connect
 from app.llm import LLM, ExtractiveLLM
-from app.retrieval import build_sources, mentions_fy, understand
+from app.retrieval import COMPANIES, build_sources, mentions_fy, understand
+from extract.numbers import format_value
 
 OUT_OF_SCOPE = re.compile(
     r"\b(share|stock)\s+price|target\s+price|\b(should|shall|can|would)\s+(i|we|one)\s+(buy|sell|hold|invest)"
@@ -41,6 +42,86 @@ Keep the answer under 120 words. For a comparison, write one line per company.""
 MARK = re.compile(r"\[(\d+)\]")
 NUMBER = re.compile(r"\d[\d,]*(?:\.\d+)?")
 FY_EXPR = re.compile(r"\bFY\s*'?\d{2,4}(?:\s*[-–]\s*\d{2,4})?|\b(?:19|20)\d{2}(?:\s*[-–]\s*\d{2,4})?\b", re.I)
+SENTENCE_BREAK = re.compile(r"((?<=[.!?])\s+|\n+)")
+EXPLAIN = re.compile(r"\b(why|how|explain|describe|reasons?|drivers?|factors?|impact|strategy|what (drove|caused|led))\b",
+                     re.I)
+TERMS = {"revenue": "revenue from operations", "revenue_usd": "revenue (US$)", "net_profit": "net profit",
+         "operating_margin": "operating margin", "headcount": "employees", "attrition": "attrition"}
+
+
+def _term(source: dict) -> str:
+    """The metric in the report's own words where they differ (HCLTech: EBIT margin; Infosys: turnover rate)."""
+    quote = source["quote"].lower()
+    if source["metric"] == "operating_margin" and "ebit" in quote:
+        return "EBIT margin"
+    if source["metric"] == "attrition" and "turnover" in quote:
+        return "attrition (reported as turnover rate)"
+    return TERMS.get(source["metric"], source["metric"].replace("_", " "))
+
+
+def fact_answer(question: str, understood, sources: list[dict]) -> str | None:
+    """'What was / compare <metric>' answered straight from facts.db when every company in scope has a fact,
+    so its numbers and citations are right by construction. None hands the question to the model."""
+    if not understood.metric or EXPLAIN.search(question):
+        return None
+    facts = [s for s in sources if s["kind"] == "fact" and s.get("metric") == understood.metric]
+    lines = []
+    for company in understood.companies:
+        own = sorted((s for s in facts if s["company"] == company), key=lambda s: s["fy"], reverse=True)
+        if not own:
+            return None
+        latest = own[0]
+        line = f"{company} {_term(latest)}, {latest['fy']}: {format_value(latest['value'], latest['unit'])} [{latest['n']}]"
+        if len(own) > 1 and not understood.fy:
+            prev = own[1]
+            line += f"; {prev['fy']}: {format_value(prev['value'], prev['unit'])} [{prev['n']}]"
+        lines.append(line + ".")
+    return "\n".join(lines)
+
+
+def _mentioned(text: str) -> set[str]:
+    return {name for name, pattern in COMPANIES.items() if pattern.search(text)}
+
+
+def verify_answer(answer: str, sources: list[dict]) -> tuple[str, list[dict]]:
+    """Check every sentence against the sources it cites: its numbers must appear in them and their company must be
+    one the sentence names. A sentence whose numbers sit in other sources gets its citations re-pointed; one with
+    numbers no source contains is removed; one with no citation and no number is kept but flagged 'uncited'."""
+    numbers_of = {s["n"]: _numbers(s["text"], drop_years=False) for s in sources}
+    company_of = {s["n"]: s["company"] for s in sources}
+    parts = SENTENCE_BREAK.split(answer)
+    kept, report = [], []
+    for i in range(0, len(parts), 2):
+        sentence, gap = parts[i].strip(), parts[i + 1] if i + 1 < len(parts) else ""
+        if not sentence:
+            continue
+        cited = [int(m) for m in MARK.findall(sentence)]
+        numbers = _numbers(sentence, drop_years=True)
+        names = _mentioned(MARK.sub(" ", sentence))
+        usable = [n for n in cited if n in numbers_of and (not names or company_of[n] in names)]
+        covered = set().union(*(numbers_of[n] for n in usable)) if usable else set()
+        status = "supported" if usable and numbers <= covered else "uncited" if not cited and not numbers else ""
+        if not status and numbers:
+            picks: list[int] | None = []
+            for number in numbers:   # cover each number, preferring the sources the model cited
+                found = [n for n in numbers_of if number in numbers_of[n] and (not names or company_of[n] in names)]
+                if not found:
+                    picks = None
+                    break
+                pick = next((n for n in found if n in cited), found[0])
+                if pick not in picks:
+                    picks.append(pick)
+            if picks:
+                core = MARK.sub("", sentence).rstrip()
+                end = core[-1] if core[-1:] in ".!?" else ""
+                sentence = f"{core.rstrip('.!? ')} {''.join(f'[{n}]' for n in picks)}{end}"
+                status = "repaired"
+        if not status:
+            report.append({"text": sentence, "status": "removed"})   # a number no source contains is never shown
+            continue
+        kept.append(sentence + gap)
+        report.append({"text": sentence, "status": status})
+    return "".join(kept).strip(), report
 
 
 def render_user_message(question: str, sources: list[dict]) -> str:
@@ -158,24 +239,38 @@ def answer_events(question: str, settings: Settings, llm: LLM,
             yield done("not_found", "evidence", f"Not found in the reports. {searched}")
             return
 
-        user = render_user_message(question, sources)
         out: list[str] = []
-        try:
-            yield from _stream_tokens(llm, user, out)
-        except Exception as exc:
-            if out:
-                yield "notice", {"message": f"The model stopped early ({type(exc).__name__}); the answer may be incomplete."}
-            else:
-                yield "notice", {"message": f"The self-hosted model is unavailable ({type(exc).__name__}); "
-                                            "showing an extractive answer instead."}
-                fallback = ExtractiveLLM()
-                backend = fallback.name
-                yield from _stream_tokens(fallback, user, out)
+        templated = fact_answer(question, understood, sources)
+        if templated:  # a metric lookup or comparison: answered from facts.db, no model call
+            backend = "facts"
+            out.append(templated)
+            for line in templated.splitlines(keepends=True):
+                yield "token", {"t": line}
+        else:
+            user = render_user_message(question, sources)
+            try:
+                yield from _stream_tokens(llm, user, out)
+            except Exception as exc:
+                if out:
+                    yield "notice", {"message": f"The model stopped early ({type(exc).__name__}); "
+                                                "the answer may be incomplete."}
+                else:
+                    yield "notice", {"message": f"The self-hosted model is unavailable ({type(exc).__name__}); "
+                                                "showing an extractive answer instead."}
+                    fallback = ExtractiveLLM()
+                    backend = fallback.name
+                    yield from _stream_tokens(fallback, user, out)
 
         answer = "".join(out).strip()
         record["answer"] = answer
         if not answer or answer.startswith(NOT_FOUND):
             yield done("not_found", "model", f"Not found in the reports. {searched}")
+            return
+        answer, sentences = verify_answer(answer, sources)
+        record["sentences"] = sentences
+        yield "final", {"answer": answer, "sentences": sentences}
+        if not answer:
+            yield done("not_found", "unverified", f"Not found in the reports: no sentence could be verified. {searched}")
             return
         citations = parse_citations(answer, sources)
         record["citations"] = [{k: c[k] for k in ("n", "doc_id", "page", "verified")} for c in citations]

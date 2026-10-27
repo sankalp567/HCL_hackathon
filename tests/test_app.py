@@ -14,7 +14,10 @@ from fastapi.testclient import TestClient
 from app.config import ROOT, get_settings
 from app.llm import OpenAICompatLLM
 from app.main import create_app
-from app.qa import parse_citations
+from app.qa import parse_citations, verify_answer
+
+# A metric lookup is answered from facts.db without the model; a descriptive question goes to the model.
+MODEL_QUESTION = "How does Infosys describe its voluntary attrition in FY2025-26?"
 
 PASSAGES = [
     ("Infosys_FY2025-26", "Infosys", 1, "text", "Talent",
@@ -127,14 +130,14 @@ def test_answerable_streams_tokens_then_cited_pages(settings):
 
 def test_model_not_found_is_never_shown(settings):
     client = TestClient(create_app(settings, llm=FakeLLM(["NOT", "_FO", "UND"])))
-    events = ask(client, "What was Infosys's voluntary attrition in FY2025-26?")
+    events = ask(client, MODEL_QUESTION)
     assert not [e for e, _ in events if e == "token"]
     assert (done_of(events)["status"], done_of(events)["gate"]) == ("not_found", "model")
 
 
 def test_answer_without_citation_is_not_found(settings):
     client = TestClient(create_app(settings, llm=FakeLLM(["Attrition was low this year, says the report."])))
-    done = done_of(ask(client, "What was Infosys's voluntary attrition in FY2025-26?"))
+    done = done_of(ask(client, MODEL_QUESTION))
     assert (done["status"], done["gate"]) == ("not_found", "no_citation")
 
 
@@ -164,7 +167,7 @@ def test_vllm_backend_streams_chunks(settings):
 
     llm = OpenAICompatLLM("http://ramanujan:8001/v1", "qwen3-4b", api_key="secret",
                           transport=httpx.MockTransport(handler))
-    events = ask(TestClient(create_app(settings, llm=llm)), "What was Infosys's voluntary attrition in FY2025-26?")
+    events = ask(TestClient(create_app(settings, llm=llm)), MODEL_QUESTION)
     answer = "".join(d["t"] for e, d in events if e == "token")
     assert answer == "Voluntary attrition was 14.1% in FY2025-26 [1]."
     assert done_of(events)["status"] == "answered" and done_of(events)["backend"] == "vllm"
@@ -175,7 +178,7 @@ def test_vllm_unreachable_falls_back_to_extractive(settings):
         raise httpx.ConnectError("connection refused", request=request)
 
     llm = OpenAICompatLLM("http://127.0.0.1:8001/v1", "qwen3-4b", transport=httpx.MockTransport(refuse))
-    events = ask(TestClient(create_app(settings, llm=llm)), "What was Infosys's voluntary attrition in FY2025-26?")
+    events = ask(TestClient(create_app(settings, llm=llm)), MODEL_QUESTION)
     assert [d for e, d in events if e == "notice"]
     assert [e for e, _ in events if e == "token"]
     assert (done_of(events)["status"], done_of(events)["backend"]) == ("answered", "extractive")
@@ -215,6 +218,36 @@ def test_overview_facts_evidence_and_search(settings):
     assert results[0]["company"] == "Infosys" and "[" in results[0]["snippet"]
     passage = client.get(f"/api/evidence?passage_id={results[0]['passage_id']}").json()
     assert passage["kind"] == "text" and passage["table"] is None
+
+
+def test_metric_lookup_is_answered_from_facts_without_the_model(settings):
+    client = TestClient(create_app(settings, llm=FakeLLM(["this must not be used"])))
+    events = ask(client, "What was Infosys's voluntary attrition in FY2025-26?")
+    final = next(d for e, d in events if e == "final")
+    assert final["answer"] == "Infosys attrition, FY2025-26: 14.1% [1]."
+    assert [s["status"] for s in final["sentences"]] == ["supported"]
+    assert done_of(events)["backend"] == "facts" and done_of(events)["status"] == "answered"
+
+
+SOURCES = [{"n": 1, "company": "TCS", "text": "TCS revenue from operations FY2025-26: 2,67,021"},
+           {"n": 2, "company": "Infosys", "text": "Infosys revenue from operations FY2025-26: 1,78,650"}]
+
+
+@pytest.mark.parametrize("answer, final, statuses", [
+    ("TCS revenue was ₹2,67,021 crore [1].", "TCS revenue was ₹2,67,021 crore [1].", ["supported"]),
+    # the model cited Infosys's page for a TCS number: re-pointed to the TCS source
+    ("TCS revenue was ₹2,67,021 crore [2].", "TCS revenue was ₹2,67,021 crore [1].", ["repaired"]),
+    # a number no source contains is removed, the rest is kept
+    ("TCS revenue was ₹2,67,021 crore [1]. It grew 9.9% [1].", "TCS revenue was ₹2,67,021 crore [1].",
+     ["supported", "removed"]),
+    ("Both companies report revenue in crore.", "Both companies report revenue in crore.", ["uncited"]),
+    ("TCS ₹2,67,021 crore vs Infosys ₹1,78,650 crore [1][2].", "TCS ₹2,67,021 crore vs Infosys ₹1,78,650 crore [1][2].",
+     ["supported"]),
+])
+def test_verify_answer_checks_each_sentence(answer, final, statuses):
+    checked, report = verify_answer(answer, SOURCES)
+    assert checked == final
+    assert [r["status"] for r in report] == statuses
 
 
 def test_company_toggle_scopes_only_questions_without_a_company(settings):
