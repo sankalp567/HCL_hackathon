@@ -1,93 +1,187 @@
-# RAG ingestion pipeline: parse → chunk → embed
+# RAG: annual reports → searchable vector database
 
-This pipeline turns the three FY2025-26 annual reports (TCS, Infosys, HCLTech) into a ChromaDB vector store. Every chunk records its company and PDF page, so answers can cite them.
-It is separate from the main app in this repository and doesn't change any of its files.
+This folder turns the three FY2025-26 annual reports (**TCS, Infosys, HCLTech**, 1,205 pages) into a **ChromaDB vector database** that can be searched by meaning. Every result says which company and PDF page it came from, so an answer can always be cited.
 
-```
-PDFs ─► parse_reports.py ─► chunk_reports.py ─► embed_chunks.py ─► data/vectorstore/ (ChromaDB)
-        Docling (GPU)        section-aware        Qwen3-Embedding-0.6B
-        + OCR damaged pages  token-sized chunks   cosine, normalized
-        + PyMuPDF check      + metadata
-```
+**The database is already built and committed** (`data/vectorstore/`). To use it you don't need the PDFs, a GPU, or the 30-minute build. Start with [Quick start](#quick-start-use-the-ready-made-database).
 
-## Setup
+> This folder is independent of the main app (`app/`, `extract/`, `web/`). It doesn't change or depend on any of their files.
 
-```bash
-python -m venv .venv-gpu
-.venv-gpu\Scripts\python -m pip install torch==2.9.0+cu128 torchvision==0.24.0+cu128 --index-url https://download.pytorch.org/whl/cu128
-.venv-gpu\Scripts\python -m pip install -r RAG/requirements.txt
-```
+---
 
-The scripts also run on the CPU-only build of PyTorch, but parsing takes about 4 times longer.
+## Contents
 
-**Reports.** The pipeline looks for the PDFs in this order:
-1. `$RAG_REPORTS_DIR`
-2. `RAG/reports/`
-3. the main project's `data/reports/`
-
-It accepts both the downloaded file names and the main project's names (`TCS_FY2025-26.pdf` and so on). See the source register in the top-level README.
-
-## Run
-
-```bash
-.venv-gpu\Scripts\python RAG/pipeline/parse_reports.py   # ~27 min first time on an RTX 4060; reruns skip finished batches
-.venv-gpu\Scripts\python RAG/pipeline/chunk_reports.py   # ~2 min
-.venv-gpu\Scripts\python RAG/pipeline/embed_chunks.py    # ~4 min, ends with a retrieval smoke test
-```
-
-| Script | Writes |
+| Path | What it is |
 |---|---|
-| `parse_reports.py` | `data/parsed/<company>/`: Docling JSON in 50-page batches, OCR output for damaged pages, per-page PyMuPDF records, `manifest.json` |
-| `chunk_reports.py` | `data/chunks/<company>.jsonl`: `id`, `text`, `embed_text`, `metadata` |
-| `embed_chunks.py` | `data/vectorstore/`: ChromaDB collection `annual_reports`, plus `embedding_info.json` |
+| `data/vectorstore/` | **The vector database** (ChromaDB, collection `annual_reports`, 6,172 chunks) |
+| `data/chunks/*.jsonl` | The same chunks as plain JSON lines: text and metadata, one file per company. Useful for keyword (BM25) search or inspection. |
+| `pipeline/parse_reports.py` | Step 1: reads the PDFs (Docling + OCR + PyMuPDF) |
+| `pipeline/chunk_reports.py` | Step 2: splits the reports into chunks and attaches metadata |
+| `pipeline/embed_chunks.py` | Step 3: embeds the chunks and writes the database. Also has `get_vectorstore()` for querying. |
+| `pipeline/config.py` | All settings: report list, embedding model, chunk size, paths |
+| `requirements.txt` | Exact package versions used |
 
-`data/` and `reports/` are git-ignored; rebuild them with the three scripts.
+---
 
-## Stored in ChromaDB (6,172 chunks)
+## Quick start: use the ready-made database
 
-| Field | Example | Meaning |
-|---|---|---|
-| id / `chunk_id` | `tcs-p0167-001` | report, first PDF page, sequence |
-| `company` | `TCS` | `HCLTech`, `TCS` or `Infosys` |
-| `fiscal_year` | `FY2025-26` | |
-| `pages` | `167` or `166-167` | 1-based **PDF** page(s): the page a PDF viewer jumps to |
-| `chunk_type` | `table` | `text`, `table` or `mixed`, from Docling's layout labels (no LLM) |
-| `n_tokens` | `475` | size in the embedding model's tokens |
-| `text` | `Revenue from operations, Year ended March 31, 2026 = 2,67,021 …` | the chunk's own text, to show and quote |
-| document | `TCS (…) annual report FY2025-26 \| Consolidated Financial Statements \| …` | the text that was embedded: `text` with company, report part and headings in front |
-
-Tables are written as `row, column = value`, so every number carries its column header (year).
-
-## Querying
+```bash
+# from the repository root
+python -m venv .venv-rag
+.venv-rag\Scripts\python -m pip install -r RAG/requirements.txt
+```
 
 ```python
 import sys; sys.path.insert(0, "RAG/pipeline")
 from embed_chunks import get_vectorstore
 
-store = get_vectorstore()   # same model + query prompt the index was built with
-for doc, score in store.similarity_search_with_relevance_scores(
-        "What was TCS's attrition rate?", k=5, filter={"company": "TCS"}):
-    print(round(score, 3), doc.metadata["company"], "p.", doc.metadata["pages"], doc.metadata["text"][:100])
+store = get_vectorstore()          # opens RAG/data/vectorstore with the right embedding model
+
+hits = store.similarity_search_with_relevance_scores(
+    "What was the consolidated revenue from operations?", k=5, filter={"company": "HCLTech"})
+
+for doc, score in hits:
+    m = doc.metadata
+    print(f"{score:.2f}  {m['company']}  p.{m['pages']}  [{m['chunk_type']}]  {m['text'][:100]}")
+```
+```
+0.45  HCLTech  p.129  [table]  Revenue from operations, Consolidated.FYended.March 31,2026 = 1,30,144. Revenue from operations, Con…
 ```
 
-You can also use plain `chromadb` (`chromadb.PersistentClient("RAG/data/vectorstore")`). In that case, embed the query yourself with `Qwen/Qwen3-Embedding-0.6B` and `prompt_name="query"`. Don't use `query_texts`: Chroma would embed the query with its own default model, and the results wouldn't match this index.
+- The first run downloads the embedding model, `Qwen/Qwen3-Embedding-0.6B` (about 1.2 GB).
+- Queries work on the CPU; a GPU is used automatically if PyTorch has CUDA.
+- Filters work on any metadata field: `{"company": "TCS"}`, `{"chunk_type": "table"}`, or both with `{"$and": [...]}`.
 
-## Design decisions
+**Without LangChain**, you can use plain `chromadb`. Embed the question with the **same model and its `query` prompt**:
 
-- **Docling for every page, on the GPU.** Infosys's tables have no ruling lines: PyMuPDF and pdfplumber found 0 tables on its P&L page, while Docling found the right values. On P&L pages, PyMuPDF placed 2 of 12 key values correctly and Docling 11 of 12. The CPU and GPU give the same output; the GPU is 3–6 times faster.
-- **OCR only on pages with a damaged text layer** (RapidOCR via Docling; 113 TCS pages, 3 HCLTech, 1 Infosys). Detection is automatic:
-  - numbers with a stray space, like `65, 487` (TCS's bold rows drop digits: `48,797` comes out as `48,97`);
-  - broken-font characters: digits as Coptic letters (`ϮϬϮϲ` for 2026), letters as Latin-Extended letters, ₹ as `༤`.
-- **PyMuPDF completeness check.** If Docling captured less than 85% of a page's words, that page's PyMuPDF text is added as extra chunks. This caught pages Docling dropped entirely (HCLTech pp. 156–161) and pull-quotes it skipped.
-- **Chunking:** Docling's `HybridChunker`, measured in the embedding model's own tokens (max 480).
-  - It splits on headings; oversized sections keep their heading in every part.
-  - Small chunks merge only with neighbours under the same heading.
-  - Tables stay whole, or are split by rows with the header repeated.
-- **Embedding:** `Qwen/Qwen3-Embedding-0.6B` (1,024 dimensions, 32k context, runs on an 8 GB GPU). Queries use its `query` prompt.
-- **Text clean-up:** the ₹ sign is repaired (Infosys extracts it as `` ` ``, TCS as `h`), and TCS's shifted digits and `&z` (for "FY") are converted back.
-- **No printed page numbers.** TCS's folios are damaged, and spreads and rotated pages break detection, so citations use PDF page numbers.
+```python
+import chromadb
+from sentence_transformers import SentenceTransformer
+
+col = chromadb.PersistentClient("RAG/data/vectorstore").get_collection("annual_reports")
+model = SentenceTransformer("Qwen/Qwen3-Embedding-0.6B")
+q = model.encode("TCS attrition rate", prompt_name="query", normalize_embeddings=True)
+res = col.query(query_embeddings=[q.tolist()], n_results=5, where={"company": "TCS"})
+```
+
+⚠️ Don't call `col.query(query_texts=[...])`. Chroma would embed the question with its own default model, which doesn't match this database, and the results would be meaningless.
+
+---
+
+## What is stored for each chunk
+
+| Field | Example | Meaning |
+|---|---|---|
+| `chunk_id` (also the record ID) | `tcs-p0167-001` | report, first PDF page, sequence number |
+| `company` | `TCS` | `HCLTech`, `TCS` or `Infosys` |
+| `fiscal_year` | `FY2025-26` | |
+| `pages` | `167` or `166-167` | **PDF page(s), counted from 1**: the page a PDF viewer jumps to. Use it for citations. |
+| `chunk_type` | `table` | `text`, `table`, or `mixed` (a table plus surrounding text) |
+| `n_tokens` | `475` | chunk length in the embedding model's tokens |
+| `text` | `Revenue from operations, Year ended March 31, 2026 = 2,67,021. …` | **the chunk's own words**, to show and quote |
+| *document* | `TCS (Tata Consultancy Services Limited) annual report FY2025-26 \| Consolidated Financial Statements \| Consolidated Statement of Profit and Loss \| Revenue from …` | **the text that was embedded**: `text` with the company, report part and headings in front |
+
+Two points about this design:
+- **The embedded text has context in front.** A P&L table never says "TCS" or "consolidated", so without the added context, the question "TCS consolidated revenue" couldn't find it.
+- **Tables are stored as `row, column = value`.** Every number carries its column header, so `2,67,021` is always tied to "Year ended March 31, 2026" and can't be confused with the previous year's column.
+
+Database facts: 6,172 chunks (HCLTech 2,063 · TCS 1,938 · Infosys 2,171), 1,024-dimension embeddings, cosine distance. A chunk is at most 480 tokens; the median is 190–300.
+
+---
+
+## How the pipeline works
+
+### Step 1: Parse (`parse_reports.py`)
+- **Docling on every page, on the GPU.** Docling is IBM's PDF parser. A vision model finds headings, paragraphs and tables, and a second model rebuilds each table's rows and columns.
+- **OCR, automatically, on pages whose text is damaged inside the PDF.** Some TCS fonts store wrong characters, so the PDF's own text is wrong even though the page looks right. The script spots this and re-reads those pages from the image (RapidOCR).
+- **PyMuPDF on every page as a second opinion,** used in step 2 to catch text Docling missed.
+
+### Step 2: Chunk (`chunk_reports.py`)
+- **Split by section.** Docling's `HybridChunker` splits on headings and measures size in the embedding model's own tokens.
+  - A long section is split, and every part keeps its heading.
+  - Small pieces merge only with neighbours under the **same** heading, never across sections.
+  - Tables stay whole. A table too big for one chunk is split by rows, with the header row repeated in each part.
+- **Pages from OCR replace the damaged originals.**
+- **Completeness check:** if Docling captured less than 85% of a page's words (compared with PyMuPDF), that page's PyMuPDF text is added as extra chunks.
+- **Text repairs:** the ₹ sign is restored (Infosys extracts it as `` ` ``, TCS as `h`), and TCS's broken digits are converted back.
+
+### Step 3: Embed (`embed_chunks.py`)
+- **Model:** each chunk's document text is embedded with **Qwen3-Embedding-0.6B**, a strong open retrieval model that fits an 8 GB GPU.
+- **Storage:** vectors, text and metadata go into ChromaDB through LangChain.
+- **Smoke test:** the script finishes by running test questions for each company.
+
+---
+
+## Quality: what we measured and fixed
+
+### Choosing the parser
+We tested PyMuPDF and Docling on CPU and GPU, on the same pages. "Values in the right cell" counts how many key P&L figures (FY26 and FY25) each tool placed in the correct row and column.
+
+| | PyMuPDF | Docling (CPU) | Docling (GPU) |
+|---|---|---|---|
+| Speed (seconds per page) | 0.02 | 1.0–2.3 | **0.26–0.68** |
+| P&L values in the right cell (3 companies) | 2 / 12 | 11 / 12 | **11 / 12** |
+| Infosys tables without ruling lines | 0 tables found | read correctly | read correctly |
+
+- **The CPU and GPU give the same output** (byte-identical on 8 of 9 test pages), so the GPU only adds speed.
+- **The one miss** was a TCS value the PDF itself stores wrongly. OCR fixed it.
+
+### Problems found in the PDFs, and the fixes
+
+| Problem | Example | Fix | Pages fixed |
+|---|---|---|---|
+| TCS bold rows drop digits from the PDF text | printed `48,797` extracts as `48,97` | detect numbers with a stray space (`65, 487`) and OCR the page | 91 TCS, 1 HCLTech |
+| TCS fonts swap characters | `ϮϬϮϲ` = 2026, `ĂƌŶŝŶŐƐ` = Earnings, `&z` = FY | detect odd characters and OCR the page; convert leftover digits back | 22 TCS (+3 HCLTech/Infosys with accented names; OCR reads those correctly too) |
+| Docling dropped whole pages or pull-quotes | HCLTech pp. 156–161 came back empty; Infosys CEO quote missing | add PyMuPDF text where Docling captured less than 85% | 62 HCLTech, 18 TCS, 71 Infosys |
+| The ₹ sign extracts as another character | Infosys `` (` crore) ``, TCS `(h crore)` | fixed during chunking | all |
+| Two-page spreads and rotated pages | 32 TCS and 31 Infosys spreads | use PDF page numbers for citations, not printed folios | all |
+
+Every chunk was checked afterwards. Apart from real accented names (Iași, Mondelēz) and TCS's product name "BαNCS", only **2 chunks** still contain damaged characters (see limitations).
+
+### Retrieval smoke test (plain vector search, top 2 results, run on the committed database)
+| Question | HCLTech | TCS | Infosys |
+|---|---|---|---|
+| "How is the company investing in generative AI?" | ✅ AI strategy, pp. 181-182 | ✅ AI client work, p. 16 | ✅ AI strategy, p. 86 |
+| "Consolidated revenue from operations for the year" | ✅ p. 129, `1,30,144` (FY26) | ❌ accounting-policy note and chairman's letter; the revenue table (p. 69, `FY 2026 = 267,021`) is not in the top 2 | ⚠️ the **standalone** figure (`1,48,819`, p. 33) ranks first |
+| "What was the employee attrition rate?" | ❌ parental-leave retention tables | ❌ parental-leave retention table, talent policy text | ⚠️ turnover table (13.2% male, p. 144) ranks **2nd** |
+
+The data is in the database (for example, TCS's revenue table is clean after the broken-digit fix), but plain vector search doesn't always rank it first.
+
+**Recommendation for the retrieval step:**
+- Combine keyword search (BM25 over `data/chunks/*.jsonl`) with vector search.
+- Re-rank the top 20–30 results with a cross-encoder such as `BAAI/bge-reranker-base`.
+- Ask for more than 2 results (`k` ≥ 10) before re-ranking.
+
+Exact terms like "attrition", "consolidated" or "revenue from operations" need keyword matching. Vector search alone favours passages that are about the same topic but don't contain the figure.
+
+---
+
+## Rebuilding from scratch (only if the PDFs or the code change)
+
+```bash
+# GPU strongly recommended: install the CUDA build of PyTorch first
+.venv-rag\Scripts\python -m pip install torch==2.9.0+cu128 torchvision==0.24.0+cu128 --index-url https://download.pytorch.org/whl/cu128
+
+.venv-rag\Scripts\python RAG/pipeline/parse_reports.py   # ~30 min on an RTX 4060, ~2 h on CPU; reruns skip finished batches
+.venv-rag\Scripts\python RAG/pipeline/chunk_reports.py   # ~2 min
+.venv-rag\Scripts\python RAG/pipeline/embed_chunks.py    # ~4 min, then prints the smoke test
+```
+
+The pipeline looks for the PDFs in this order:
+1. `$RAG_REPORTS_DIR`
+2. `RAG/reports/`
+3. the main project's `data/reports/`
+
+It accepts both the downloaded names and the main project's names (`TCS_FY2025-26.pdf` and so on). The source register with URLs is in the top-level README.
+
+Before committing a rebuilt database, compact it so `chroma.sqlite3` stays under GitHub's 100 MB file limit (it shrinks from about 107 MB to 75 MB):
+```bash
+python -c "import sqlite3; c=sqlite3.connect('RAG/data/vectorstore/chroma.sqlite3'); c.execute('vacuum'); c.close()"
+```
+
+---
 
 ## Known limitations
-
-- Two TCS chunks still contain damaged characters: pp. 44–45, where a chunk crosses into an OCR'd page, and one value `6ε6` on p. 305.
-- Plain vector search ranks some numeric questions poorly. For "attrition", parental-leave retention tables rank above turnover tables, and for "consolidated revenue", Infosys's standalone figure comes first. Use keyword (BM25) plus vector search and a re-ranker (for example `BAAI/bge-reranker-base`) at query time.
+- **Two damaged TCS chunks:** one on pp. 44–45 (a chunk that crosses into an OCR'd page) and one value reading `6ε6` on p. 305.
+- **Duplicate text:** the PyMuPDF fallback can repeat text Docling already captured on the same page. These chunks are plain text without table structure.
+- **Ranking:** plain vector search misses some numeric questions in its top 2 (TCS revenue, attrition; see the smoke test above). BM25 plus a re-ranker is the planned fix.
+- **Citations use PDF page numbers, not the numbers printed on the page.** TCS's printed numbers are damaged, and spreads put two printed pages on one PDF page.

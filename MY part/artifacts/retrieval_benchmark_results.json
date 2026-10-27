@@ -1,0 +1,3059 @@
+{
+  "meta": {
+    "label": "synthetic",
+    "generated_at": "2026-10-27T08:51:44+00:00",
+    "version": "0.1.0",
+    "hardware": {
+      "platform": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+      "machine": "arm64",
+      "python": "3.13.13",
+      "cpu": "Apple M5",
+      "ram_gb": 16.0,
+      "gpu_used": false
+    },
+    "corpus": {
+      "kind": "synthetic fixture (fictional companies, invented numbers)",
+      "chunks": 144,
+      "dense": "HashingDenseRetriever (1024-d signed hashing of words+char-trigrams): STAND-IN, not Qwen3-Embedding-0.6B",
+      "lexical": "BM25Retriever (own implementation, k1=1.5 b=0.75, unigram+bigram, crude plural stemmer)",
+      "vector_store": "none (in-memory numpy)",
+      "company_aliases": "fixture registry (Acme/Borealis/Cygnus)"
+    },
+    "dataset": {
+      "queries_file": "synthetic_queries.jsonl",
+      "n_queries": 96,
+      "n_answerable": 87,
+      "n_unanswerable": 9,
+      "n_templates": 67,
+      "n_handwritten": 43,
+      "answerable_queries_stating": {
+        "company": 74,
+        "fiscal_year": 71,
+        "scope": 39,
+        "latest_wording": 6,
+        "cross_company_wording": 7,
+        "n_answerable": 87
+      },
+      "categories": {
+        "historical": 10,
+        "multi_company": 18,
+        "numeric_lookup": 14,
+        "paraphrase": 16,
+        "qualitative": 15,
+        "scope": 8,
+        "terminology": 6,
+        "unanswerable": 9
+      },
+      "provenance": [
+        "synthetic"
+      ]
+    },
+    "rrf": {
+      "k": 60,
+      "rank_base": 1,
+      "formula": "sum_lists 1/(k+rank)"
+    },
+    "repeats_per_query": 5,
+    "numeric_k": 5,
+    "real_data_benchmark": "BLOCKED"
+  },
+  "experiments": [
+    {
+      "id": "A",
+      "name": "Dense only [dense = hashing stand-in]",
+      "purpose": "baseline for dense retrieval",
+      "status": "ran",
+      "config": {
+        "name": "A",
+        "use_dense": true,
+        "use_bm25": false,
+        "k_candidates": 20,
+        "rrf_k": 60,
+        "use_filters": false,
+        "per_entity": false,
+        "implicit_routing": true,
+        "alias_expansion": false,
+        "rerank_pool": 20,
+        "final_k": 10,
+        "soft_boost": 0.0,
+        "company_quota": false,
+        "assemble_tables": true,
+        "reranker": "none",
+        "min_relevance": null
+      },
+      "components_executed": [
+        "dense"
+      ],
+      "metrics": {
+        "recall@5": 0.7049808429118775,
+        "recall@10": 0.8505747126436781,
+        "precision@5": 0.2735632183908046,
+        "mrr": 0.5501094690749863,
+        "ndcg@5": 0.5323850530766291,
+        "ndcg@10": 0.5827424776647243,
+        "source_page_hit": 0.9425287356321839,
+        "company_year_hit": 0.9846153846153847,
+        "metric_table_hit": 0.8571428571428571,
+        "row_evidence_hit": 0.6811594202898551,
+        "company_coverage": 0.9848484848484849,
+        "company_full_coverage": 0.9545454545454546,
+        "scope_match@1": 1.0
+      },
+      "metric_n": {
+        "recall@5": 87,
+        "recall@10": 87,
+        "precision@5": 87,
+        "mrr": 87,
+        "ndcg@5": 87,
+        "ndcg@10": 87,
+        "source_page_hit": 87,
+        "company_year_hit": 65,
+        "metric_table_hit": 70,
+        "row_evidence_hit": 69,
+        "company_coverage": 22,
+        "company_full_coverage": 22,
+        "scope_match@1": 39
+      },
+      "by_category": {
+        "historical": {
+          "recall@10": 0.9,
+          "mrr": 0.5333333333333333,
+          "ndcg@10": 0.5815142248523129,
+          "n": 10
+        },
+        "multi_company": {
+          "recall@10": 0.8333333333333334,
+          "mrr": 0.7301587301587301,
+          "ndcg@10": 0.7138027917361874,
+          "n": 18
+        },
+        "numeric_lookup": {
+          "recall@10": 0.8928571428571429,
+          "mrr": 0.5476190476190477,
+          "ndcg@10": 0.6236756386519735,
+          "n": 14
+        },
+        "paraphrase": {
+          "recall@10": 0.59375,
+          "mrr": 0.290625,
+          "ndcg@10": 0.257672644973021,
+          "n": 16
+        },
+        "qualitative": {
+          "recall@10": 0.9333333333333333,
+          "mrr": 0.5577777777777778,
+          "ndcg@10": 0.6284218074303131,
+          "n": 15
+        },
+        "scope": {
+          "recall@10": 1.0,
+          "mrr": 0.5875,
+          "ndcg@10": 0.6538419588275025,
+          "n": 8
+        },
+        "terminology": {
+          "recall@10": 1.0,
+          "mrr": 0.6666666666666666,
+          "ndcg@10": 0.7539531690476383,
+          "n": 6
+        }
+      },
+      "latency": {
+        "analysis": {
+          "p50_ms": 0.07256295066326857,
+          "p95_ms": 0.09588125394657254,
+          "mean_ms": 0.07498861474838729,
+          "n": 480
+        },
+        "dense": {
+          "p50_ms": 0.056541990488767624,
+          "p95_ms": 0.0632940442301333,
+          "mean_ms": 0.057025079149752855,
+          "n": 480
+        },
+        "bm25": {
+          "p50_ms": 0.0,
+          "p95_ms": 0.0,
+          "mean_ms": 0.0,
+          "n": 480
+        },
+        "fusion": {
+          "p50_ms": 0.006770598702132702,
+          "p95_ms": 0.007250113412737846,
+          "mean_ms": 0.0069016435494025545,
+          "n": 480
+        },
+        "rerank": {
+          "p50_ms": 0.00012479722499847412,
+          "p95_ms": 0.00016600824892520905,
+          "mean_ms": 0.00010846415534615517,
+          "n": 480
+        },
+        "total": {
+          "p50_ms": 0.15591643750667572,
+          "p95_ms": 0.18463326850906014,
+          "mean_ms": 0.15859199920669198,
+          "n": 480
+        }
+      },
+      "template_macro": {
+        "recall@10": 0.8505747126436782,
+        "mrr": 0.5668308702791461,
+        "ndcg@10": 0.5979003621332086
+      },
+      "n_templates": 58,
+      "by_group": {
+        "legacy_templates": {
+          "n": 49,
+          "recall@10": 0.8673469387755102,
+          "mrr": 0.5445578231292517,
+          "ndcg@10": 0.5794803351656931
+        },
+        "handwritten": {
+          "n": 38,
+          "recall@10": 0.8289473684210527,
+          "mrr": 0.5572681704260652,
+          "ndcg@10": 0.5869489245713698
+        }
+      },
+      "status_counts": {
+        "ok": 96
+      },
+      "unanswerable_returning_candidates": "9/9",
+      "counts_mean": {
+        "dense_hits": 20.0,
+        "bm25_hits": 0.0,
+        "union_before_dedupe": 20.0,
+        "after_dedupe": 20.0,
+        "reranked_pool": 0.0,
+        "below_threshold": 0.0,
+        "returned": 10.0
+      },
+      "n_answerable": 87,
+      "n_unanswerable_excluded": 9
+    },
+    {
+      "id": "B",
+      "name": "BM25 only",
+      "purpose": "lexical retrieval",
+      "status": "ran",
+      "config": {
+        "name": "B",
+        "use_dense": false,
+        "use_bm25": true,
+        "k_candidates": 20,
+        "rrf_k": 60,
+        "use_filters": false,
+        "per_entity": false,
+        "implicit_routing": true,
+        "alias_expansion": false,
+        "rerank_pool": 20,
+        "final_k": 10,
+        "soft_boost": 0.0,
+        "company_quota": false,
+        "assemble_tables": true,
+        "reranker": "none",
+        "min_relevance": null
+      },
+      "components_executed": [
+        "bm25"
+      ],
+      "metrics": {
+        "recall@5": 0.7222222222222222,
+        "recall@10": 0.867816091954023,
+        "precision@5": 0.2850574712643678,
+        "mrr": 0.6576947637292464,
+        "ndcg@5": 0.5943972310187661,
+        "ndcg@10": 0.6383760756606138,
+        "source_page_hit": 0.8620689655172413,
+        "company_year_hit": 0.9538461538461539,
+        "metric_table_hit": 0.7571428571428571,
+        "row_evidence_hit": 0.7246376811594203,
+        "company_coverage": 0.9696969696969696,
+        "company_full_coverage": 0.9090909090909091,
+        "scope_match@1": 0.8205128205128205
+      },
+      "metric_n": {
+        "recall@5": 87,
+        "recall@10": 87,
+        "precision@5": 87,
+        "mrr": 87,
+        "ndcg@5": 87,
+        "ndcg@10": 87,
+        "source_page_hit": 87,
+        "company_year_hit": 65,
+        "metric_table_hit": 70,
+        "row_evidence_hit": 69,
+        "company_coverage": 22,
+        "company_full_coverage": 22,
+        "scope_match@1": 39
+      },
+      "by_category": {
+        "historical": {
+          "recall@10": 1.0,
+          "mrr": 0.5325,
+          "ndcg@10": 0.5837713525145516,
+          "n": 10
+        },
+        "multi_company": {
+          "recall@10": 0.8055555555555556,
+          "mrr": 0.8888888888888888,
+          "ndcg@10": 0.8048299641632544,
+          "n": 18
+        },
+        "numeric_lookup": {
+          "recall@10": 0.8571428571428571,
+          "mrr": 0.6785714285714286,
+          "ndcg@10": 0.6441975509170453,
+          "n": 14
+        },
+        "paraphrase": {
+          "recall@10": 0.71875,
+          "mrr": 0.4166666666666667,
+          "ndcg@10": 0.35945701704450134,
+          "n": 16
+        },
+        "qualitative": {
+          "recall@10": 0.9,
+          "mrr": 0.7722222222222223,
+          "ndcg@10": 0.7178849344498784,
+          "n": 15
+        },
+        "scope": {
+          "recall@10": 1.0,
+          "mrr": 0.45555555555555555,
+          "ndcg@10": 0.5978655549220124,
+          "n": 8
+        },
+        "terminology": {
+          "recall@10": 1.0,
+          "mrr": 0.75,
+          "ndcg@10": 0.8154648767857288,
+          "n": 6
+        }
+      },
+      "latency": {
+        "analysis": {
+          "p50_ms": 0.07412489503622055,
+          "p95_ms": 0.0956293661147356,
+          "mean_ms": 0.0759931329715376,
+          "n": 480
+        },
+        "dense": {
+          "p50_ms": 0.0,
+          "p95_ms": 0.0,
+          "mean_ms": 0.0,
+          "n": 480
+        },
+        "bm25": {
+          "p50_ms": 0.0891669187694788,
+          "p95_ms": 0.14209531946107745,
+          "mean_ms": 0.08396712413135295,
+          "n": 480
+        },
+        "fusion": {
+          "p50_ms": 0.006709014996886253,
+          "p95_ms": 0.007041962817311287,
+          "mean_ms": 0.006556153918306033,
+          "n": 480
+        },
+        "rerank": {
+          "p50_ms": 0.000125030055642128,
+          "p95_ms": 0.000125030055642128,
+          "mean_ms": 0.0001095482730306685,
+          "n": 480
+        },
+        "total": {
+          "p50_ms": 0.19043695647269487,
+          "p95_ms": 0.253637006971985,
+          "mean_ms": 0.1848539822579672,
+          "n": 480
+        }
+      },
+      "template_macro": {
+        "recall@10": 0.853448275862069,
+        "mrr": 0.7035919540229885,
+        "ndcg@10": 0.6684948389949329
+      },
+      "n_templates": 58,
+      "by_group": {
+        "legacy_templates": {
+          "n": 49,
+          "recall@10": 0.8979591836734694,
+          "mrr": 0.5874149659863946,
+          "ndcg@10": 0.6020148610046469
+        },
+        "handwritten": {
+          "n": 38,
+          "recall@10": 0.8289473684210527,
+          "mrr": 0.7483187134502923,
+          "ndcg@10": 0.6852629050854132
+        }
+      },
+      "status_counts": {
+        "ok": 96
+      },
+      "unanswerable_returning_candidates": "9/9",
+      "counts_mean": {
+        "dense_hits": 0.0,
+        "bm25_hits": 19.208333333333332,
+        "union_before_dedupe": 19.208333333333332,
+        "after_dedupe": 19.208333333333332,
+        "reranked_pool": 0.0,
+        "below_threshold": 0.0,
+        "returned": 9.916666666666666
+      },
+      "n_answerable": 87,
+      "n_unanswerable_excluded": 9
+    },
+    {
+      "id": "C",
+      "name": "Dense + BM25 + RRF [dense = hashing stand-in]",
+      "purpose": "hybrid vs single retrievers",
+      "status": "ran",
+      "config": {
+        "name": "C",
+        "use_dense": true,
+        "use_bm25": true,
+        "k_candidates": 20,
+        "rrf_k": 60,
+        "use_filters": false,
+        "per_entity": false,
+        "implicit_routing": true,
+        "alias_expansion": false,
+        "rerank_pool": 20,
+        "final_k": 10,
+        "soft_boost": 0.0,
+        "company_quota": false,
+        "assemble_tables": true,
+        "reranker": "none",
+        "min_relevance": null
+      },
+      "components_executed": [
+        "dense",
+        "bm25",
+        "rrf"
+      ],
+      "metrics": {
+        "recall@5": 0.7203065134099617,
+        "recall@10": 0.8409961685823756,
+        "precision@5": 0.2827586206896552,
+        "mrr": 0.596688560481664,
+        "ndcg@5": 0.5794803297101881,
+        "ndcg@10": 0.6149423681215045,
+        "source_page_hit": 0.9310344827586207,
+        "company_year_hit": 0.9692307692307692,
+        "metric_table_hit": 0.8428571428571429,
+        "row_evidence_hit": 0.7391304347826086,
+        "company_coverage": 0.9696969696969696,
+        "company_full_coverage": 0.9090909090909091,
+        "scope_match@1": 0.9487179487179487
+      },
+      "metric_n": {
+        "recall@5": 87,
+        "recall@10": 87,
+        "precision@5": 87,
+        "mrr": 87,
+        "ndcg@5": 87,
+        "ndcg@10": 87,
+        "source_page_hit": 87,
+        "company_year_hit": 65,
+        "metric_table_hit": 70,
+        "row_evidence_hit": 69,
+        "company_coverage": 22,
+        "company_full_coverage": 22,
+        "scope_match@1": 39
+      },
+      "by_category": {
+        "historical": {
+          "recall@10": 0.9,
+          "mrr": 0.5366666666666666,
+          "ndcg@10": 0.5775296646517135,
+          "n": 10
+        },
+        "multi_company": {
+          "recall@10": 0.8425925925925926,
+          "mrr": 0.7685185185185186,
+          "ndcg@10": 0.7533716851970509,
+          "n": 18
+        },
+        "numeric_lookup": {
+          "recall@10": 0.9285714285714286,
+          "mrr": 0.5714285714285714,
+          "ndcg@10": 0.6579398541857042,
+          "n": 14
+        },
+        "paraphrase": {
+          "recall@10": 0.53125,
+          "mrr": 0.3636904761904762,
+          "ndcg@10": 0.2911043857785506,
+          "n": 16
+        },
+        "qualitative": {
+          "recall@10": 0.9,
+          "mrr": 0.6555555555555556,
+          "ndcg@10": 0.677710035773513,
+          "n": 15
+        },
+        "scope": {
+          "recall@10": 1.0,
+          "mrr": 0.5907738095238095,
+          "ndcg@10": 0.6709576089630707,
+          "n": 8
+        },
+        "terminology": {
+          "recall@10": 1.0,
+          "mrr": 0.7222222222222222,
+          "ndcg@10": 0.793643251190486,
+          "n": 6
+        }
+      },
+      "latency": {
+        "analysis": {
+          "p50_ms": 0.074562500230968,
+          "p95_ms": 0.10026864474639295,
+          "mean_ms": 0.07751459682670732,
+          "n": 480
+        },
+        "dense": {
+          "p50_ms": 0.05743757355958223,
+          "p95_ms": 0.06445656763389702,
+          "mean_ms": 0.05787142824071149,
+          "n": 480
+        },
+        "bm25": {
+          "p50_ms": 0.09008357301354408,
+          "p95_ms": 0.1418371801264584,
+          "mean_ms": 0.0841483095427975,
+          "n": 480
+        },
+        "fusion": {
+          "p50_ms": 0.024124979972839355,
+          "p95_ms": 0.027626997325569388,
+          "mean_ms": 0.02432761830277741,
+          "n": 480
+        },
+        "rerank": {
+          "p50_ms": 0.000125030055642128,
+          "p95_ms": 0.00016693957149982452,
+          "mean_ms": 0.0001257581364673873,
+          "n": 480
+        },
+        "total": {
+          "p50_ms": 0.27191650588065386,
+          "p95_ms": 0.3354037995450198,
+          "mean_ms": 0.26573889335850254,
+          "n": 480
+        }
+      },
+      "template_macro": {
+        "recall@10": 0.8477011494252873,
+        "mrr": 0.626135741652983,
+        "ndcg@10": 0.6397987045484357
+      },
+      "n_templates": 58,
+      "by_group": {
+        "legacy_templates": {
+          "n": 49,
+          "recall@10": 0.8469387755102041,
+          "mrr": 0.5548104956268222,
+          "ndcg@10": 0.5903101701384892
+        },
+        "handwritten": {
+          "n": 38,
+          "recall@10": 0.8333333333333334,
+          "mrr": 0.6506892230576441,
+          "ndcg@10": 0.6467049392048665
+        }
+      },
+      "status_counts": {
+        "ok": 96
+      },
+      "unanswerable_returning_candidates": "9/9",
+      "counts_mean": {
+        "dense_hits": 20.0,
+        "bm25_hits": 19.208333333333332,
+        "union_before_dedupe": 39.208333333333336,
+        "after_dedupe": 24.375,
+        "reranked_pool": 0.0,
+        "below_threshold": 0.0,
+        "returned": 10.0
+      },
+      "n_answerable": 87,
+      "n_unanswerable_excluded": 9
+    },
+    {
+      "id": "D",
+      "name": "Hybrid + RRF + rerank (stand-in heuristic) [dense = hashing stand-in]",
+      "purpose": "value of the rerank stage",
+      "status": "ran",
+      "config": {
+        "name": "D",
+        "use_dense": true,
+        "use_bm25": true,
+        "k_candidates": 20,
+        "rrf_k": 60,
+        "use_filters": false,
+        "per_entity": false,
+        "implicit_routing": true,
+        "alias_expansion": false,
+        "rerank_pool": 20,
+        "final_k": 10,
+        "soft_boost": 0.0,
+        "company_quota": false,
+        "assemble_tables": true,
+        "reranker": "lexical-feature-heuristic",
+        "min_relevance": null
+      },
+      "components_executed": [
+        "dense",
+        "bm25",
+        "rrf",
+        "rerank:lexical-feature-heuristic"
+      ],
+      "metrics": {
+        "recall@5": 0.8381226053639848,
+        "recall@10": 0.9157088122605365,
+        "precision@5": 0.3195402298850575,
+        "mrr": 0.7938332421091042,
+        "ndcg@5": 0.7396069204770276,
+        "ndcg@10": 0.7634800404628895,
+        "source_page_hit": 0.9425287356321839,
+        "company_year_hit": 1.0,
+        "metric_table_hit": 0.9428571428571428,
+        "row_evidence_hit": 0.8840579710144928,
+        "company_coverage": 0.9848484848484849,
+        "company_full_coverage": 0.9545454545454546,
+        "scope_match@1": 0.9743589743589743
+      },
+      "metric_n": {
+        "recall@5": 87,
+        "recall@10": 87,
+        "precision@5": 87,
+        "mrr": 87,
+        "ndcg@5": 87,
+        "ndcg@10": 87,
+        "source_page_hit": 87,
+        "company_year_hit": 65,
+        "metric_table_hit": 70,
+        "row_evidence_hit": 69,
+        "company_coverage": 22,
+        "company_full_coverage": 22,
+        "scope_match@1": 39
+      },
+      "by_category": {
+        "historical": {
+          "recall@10": 0.95,
+          "mrr": 0.9166666666666666,
+          "ndcg@10": 0.9095622752156214,
+          "n": 10
+        },
+        "multi_company": {
+          "recall@10": 0.8425925925925926,
+          "mrr": 0.8518518518518519,
+          "ndcg@10": 0.7985548280440573,
+          "n": 18
+        },
+        "numeric_lookup": {
+          "recall@10": 0.9285714285714286,
+          "mrr": 0.880952380952381,
+          "ndcg@10": 0.8296024294415087,
+          "n": 14
+        },
+        "paraphrase": {
+          "recall@10": 0.90625,
+          "mrr": 0.53125,
+          "ndcg@10": 0.502145986344545,
+          "n": 16
+        },
+        "qualitative": {
+          "recall@10": 0.9,
+          "mrr": 0.6931216931216931,
+          "ndcg@10": 0.6748438070714666,
+          "n": 15
+        },
+        "scope": {
+          "recall@10": 1.0,
+          "mrr": 0.9166666666666666,
+          "ndcg@10": 0.8977158704445379,
+          "n": 8
+        },
+        "terminology": {
+          "recall@10": 1.0,
+          "mrr": 1.0,
+          "ndcg@10": 1.0,
+          "n": 6
+        }
+      },
+      "latency": {
+        "analysis": {
+          "p50_ms": 0.07616705261170864,
+          "p95_ms": 0.09977085283026098,
+          "mean_ms": 0.0783190024473394,
+          "n": 480
+        },
+        "dense": {
+          "p50_ms": 0.05797902122139931,
+          "p95_ms": 0.06437698611989617,
+          "mean_ms": 0.05817018682137132,
+          "n": 480
+        },
+        "bm25": {
+          "p50_ms": 0.09070849046111107,
+          "p95_ms": 0.1423581386916339,
+          "mean_ms": 0.0849594478495419,
+          "n": 480
+        },
+        "fusion": {
+          "p50_ms": 0.024791923351585865,
+          "p95_ms": 0.028252135962247845,
+          "mean_ms": 0.024887821928132325,
+          "n": 480
+        },
+        "rerank": {
+          "p50_ms": 0.1698335399851203,
+          "p95_ms": 0.19533928716555238,
+          "mean_ms": 0.17222237074747682,
+          "n": 480
+        },
+        "total": {
+          "p50_ms": 0.443084049038589,
+          "p95_ms": 0.5169520503841339,
+          "mean_ms": 0.4395283040745805,
+          "n": 480
+        }
+      },
+      "template_macro": {
+        "recall@10": 0.8908045977011494,
+        "mrr": 0.8126254333150885,
+        "ndcg@10": 0.7663858665930575
+      },
+      "n_templates": 58,
+      "by_group": {
+        "legacy_templates": {
+          "n": 49,
+          "recall@10": 0.9693877551020408,
+          "mrr": 0.7836086815678653,
+          "ndcg@10": 0.7799386920770768
+        },
+        "handwritten": {
+          "n": 38,
+          "recall@10": 0.8464912280701754,
+          "mrr": 0.8070175438596492,
+          "ndcg@10": 0.7422570423288061
+        }
+      },
+      "status_counts": {
+        "ok": 96
+      },
+      "unanswerable_returning_candidates": "9/9",
+      "counts_mean": {
+        "dense_hits": 20.0,
+        "bm25_hits": 19.208333333333332,
+        "union_before_dedupe": 39.208333333333336,
+        "after_dedupe": 24.375,
+        "reranked_pool": 20.0,
+        "below_threshold": 0.0,
+        "returned": 10.0
+      },
+      "n_answerable": 87,
+      "n_unanswerable_excluded": 9
+    },
+    {
+      "id": "E",
+      "name": "Hybrid + RRF + metadata filters [dense = hashing stand-in]",
+      "purpose": "company/year/scope filtering",
+      "status": "ran",
+      "config": {
+        "name": "E",
+        "use_dense": true,
+        "use_bm25": true,
+        "k_candidates": 20,
+        "rrf_k": 60,
+        "use_filters": true,
+        "per_entity": true,
+        "implicit_routing": true,
+        "alias_expansion": false,
+        "rerank_pool": 20,
+        "final_k": 10,
+        "soft_boost": 0.1,
+        "company_quota": true,
+        "assemble_tables": true,
+        "reranker": "none",
+        "min_relevance": null
+      },
+      "components_executed": [
+        "dense",
+        "bm25",
+        "rrf",
+        "metadata_filters",
+        "per_entity_retrieval"
+      ],
+      "metrics": {
+        "recall@5": 0.8572796934865899,
+        "recall@10": 0.8812260536398469,
+        "precision@5": 0.3149425287356322,
+        "mrr": 0.7957033388067871,
+        "ndcg@5": 0.762023823207916,
+        "ndcg@10": 0.7725484051895511,
+        "source_page_hit": 0.9770114942528736,
+        "company_year_hit": 1.0,
+        "metric_table_hit": 0.9714285714285714,
+        "row_evidence_hit": 0.9130434782608695,
+        "company_coverage": 0.9696969696969696,
+        "company_full_coverage": 0.9090909090909091,
+        "scope_match@1": 1.0
+      },
+      "metric_n": {
+        "recall@5": 87,
+        "recall@10": 87,
+        "precision@5": 87,
+        "mrr": 87,
+        "ndcg@5": 87,
+        "ndcg@10": 87,
+        "source_page_hit": 87,
+        "company_year_hit": 65,
+        "metric_table_hit": 70,
+        "row_evidence_hit": 69,
+        "company_coverage": 22,
+        "company_full_coverage": 22,
+        "scope_match@1": 39
+      },
+      "by_category": {
+        "historical": {
+          "recall@10": 0.8,
+          "mrr": 0.925,
+          "ndcg@10": 0.7660176994749232,
+          "n": 10
+        },
+        "multi_company": {
+          "recall@10": 0.7592592592592592,
+          "mrr": 0.7857142857142857,
+          "ndcg@10": 0.7507927517282957,
+          "n": 18
+        },
+        "numeric_lookup": {
+          "recall@10": 0.9285714285714286,
+          "mrr": 0.9523809523809524,
+          "ndcg@10": 0.906895442076643,
+          "n": 14
+        },
+        "paraphrase": {
+          "recall@10": 0.90625,
+          "mrr": 0.5104166666666666,
+          "ndcg@10": 0.5700952157545981,
+          "n": 16
+        },
+        "qualitative": {
+          "recall@10": 0.9,
+          "mrr": 0.6888888888888889,
+          "ndcg@10": 0.7034148413126357,
+          "n": 15
+        },
+        "scope": {
+          "recall@10": 1.0,
+          "mrr": 1.0,
+          "ndcg@10": 0.9584978080995372,
+          "n": 8
+        },
+        "terminology": {
+          "recall@10": 1.0,
+          "mrr": 1.0,
+          "ndcg@10": 1.0,
+          "n": 6
+        }
+      },
+      "latency": {
+        "analysis": {
+          "p50_ms": 0.07587496656924486,
+          "p95_ms": 0.09959229500964283,
+          "mean_ms": 0.07860297337174416,
+          "n": 480
+        },
+        "dense": {
+          "p50_ms": 0.1382294576615095,
+          "p95_ms": 0.4248476820066571,
+          "mean_ms": 0.1693317545383858,
+          "n": 480
+        },
+        "bm25": {
+          "p50_ms": 0.18568802624940872,
+          "p95_ms": 0.55959994206205,
+          "mean_ms": 0.21298451853605607,
+          "n": 480
+        },
+        "fusion": {
+          "p50_ms": 0.024208566173911095,
+          "p95_ms": 0.0699398457072675,
+          "mean_ms": 0.02856436816121762,
+          "n": 480
+        },
+        "rerank": {
+          "p50_ms": 0.000125030055642128,
+          "p95_ms": 0.00016693957149982452,
+          "mean_ms": 0.00013483174067611495,
+          "n": 480
+        },
+        "total": {
+          "p50_ms": 0.44514599721878767,
+          "p95_ms": 1.184570312034338,
+          "mean_ms": 0.5118821456562728,
+          "n": 480
+        }
+      },
+      "template_macro": {
+        "recall@10": 0.8563218390804598,
+        "mrr": 0.819991789819376,
+        "ndcg@10": 0.7851349707676845
+      },
+      "n_templates": 58,
+      "by_group": {
+        "legacy_templates": {
+          "n": 49,
+          "recall@10": 0.9285714285714286,
+          "mrr": 0.7755102040816326,
+          "ndcg@10": 0.7711012296812211
+        },
+        "handwritten": {
+          "n": 38,
+          "recall@10": 0.8201754385964912,
+          "mrr": 0.8217418546365914,
+          "ndcg@10": 0.7744144999239768
+        }
+      },
+      "status_counts": {
+        "ok": 96
+      },
+      "unanswerable_returning_candidates": "9/9",
+      "counts_mean": {
+        "dense_hits": 20.166666666666668,
+        "bm25_hits": 16.895833333333332,
+        "union_before_dedupe": 37.0625,
+        "after_dedupe": 21.197916666666668,
+        "reranked_pool": 0.0,
+        "below_threshold": 0.0,
+        "returned": 9.510416666666666
+      },
+      "n_answerable": 87,
+      "n_unanswerable_excluded": 9
+    },
+    {
+      "id": "F",
+      "name": "Hybrid + RRF + filters + rerank (stand-in heuristic) [dense = hashing stand-in]",
+      "purpose": "full pipeline",
+      "status": "ran",
+      "config": {
+        "name": "F",
+        "use_dense": true,
+        "use_bm25": true,
+        "k_candidates": 20,
+        "rrf_k": 60,
+        "use_filters": true,
+        "per_entity": true,
+        "implicit_routing": true,
+        "alias_expansion": false,
+        "rerank_pool": 20,
+        "final_k": 10,
+        "soft_boost": 0.1,
+        "company_quota": true,
+        "assemble_tables": true,
+        "reranker": "lexical-feature-heuristic",
+        "min_relevance": null
+      },
+      "components_executed": [
+        "dense",
+        "bm25",
+        "rrf",
+        "metadata_filters",
+        "per_entity_retrieval",
+        "rerank:lexical-feature-heuristic"
+      ],
+      "metrics": {
+        "recall@5": 0.8831417624521072,
+        "recall@10": 0.8927203065134101,
+        "precision@5": 0.3333333333333333,
+        "mrr": 0.8840996168582376,
+        "ndcg@5": 0.8320345180908715,
+        "ndcg@10": 0.8342281372616739,
+        "source_page_hit": 0.9885057471264368,
+        "company_year_hit": 1.0,
+        "metric_table_hit": 0.9571428571428572,
+        "row_evidence_hit": 0.9130434782608695,
+        "company_coverage": 0.9848484848484849,
+        "company_full_coverage": 0.9545454545454546,
+        "scope_match@1": 1.0
+      },
+      "metric_n": {
+        "recall@5": 87,
+        "recall@10": 87,
+        "precision@5": 87,
+        "mrr": 87,
+        "ndcg@5": 87,
+        "ndcg@10": 87,
+        "source_page_hit": 87,
+        "company_year_hit": 65,
+        "metric_table_hit": 70,
+        "row_evidence_hit": 69,
+        "company_coverage": 22,
+        "company_full_coverage": 22,
+        "scope_match@1": 39
+      },
+      "by_category": {
+        "historical": {
+          "recall@10": 0.8,
+          "mrr": 1.0,
+          "ndcg@10": 0.9148618411963888,
+          "n": 10
+        },
+        "multi_company": {
+          "recall@10": 0.8148148148148148,
+          "mrr": 0.9166666666666666,
+          "ndcg@10": 0.8413627028789875,
+          "n": 18
+        },
+        "numeric_lookup": {
+          "recall@10": 0.9285714285714286,
+          "mrr": 0.9523809523809524,
+          "ndcg@10": 0.9180307729231055,
+          "n": 14
+        },
+        "paraphrase": {
+          "recall@10": 0.90625,
+          "mrr": 0.6302083333333334,
+          "ndcg@10": 0.5973892480757867,
+          "n": 16
+        },
+        "qualitative": {
+          "recall@10": 0.9,
+          "mrr": 0.8666666666666667,
+          "ndcg@10": 0.813737308203173,
+          "n": 15
+        },
+        "scope": {
+          "recall@10": 1.0,
+          "mrr": 1.0,
+          "ndcg@10": 0.9584978080995372,
+          "n": 8
+        },
+        "terminology": {
+          "recall@10": 1.0,
+          "mrr": 1.0,
+          "ndcg@10": 1.0,
+          "n": 6
+        }
+      },
+      "latency": {
+        "analysis": {
+          "p50_ms": 0.07716647814959288,
+          "p95_ms": 0.09917319985106587,
+          "mean_ms": 0.07948161267753069,
+          "n": 480
+        },
+        "dense": {
+          "p50_ms": 0.14054146595299244,
+          "p95_ms": 0.4264394636265933,
+          "mean_ms": 0.17176162897764394,
+          "n": 480
+        },
+        "bm25": {
+          "p50_ms": 0.1879790797829628,
+          "p95_ms": 0.5523073021322483,
+          "mean_ms": 0.2150543179595843,
+          "n": 480
+        },
+        "fusion": {
+          "p50_ms": 0.024562934413552284,
+          "p95_ms": 0.07042492507025595,
+          "mean_ms": 0.029166411453237135,
+          "n": 480
+        },
+        "rerank": {
+          "p50_ms": 0.16770849470049143,
+          "p95_ms": 0.18992644036188722,
+          "mean_ms": 0.1420441573524537,
+          "n": 480
+        },
+        "total": {
+          "p50_ms": 0.5795209435746074,
+          "p95_ms": 1.3759638997726142,
+          "mean_ms": 0.6606117288659638,
+          "n": 480
+        }
+      },
+      "template_macro": {
+        "recall@10": 0.8735632183908045,
+        "mrr": 0.9113984674329503,
+        "ndcg@10": 0.8454516192384891
+      },
+      "n_templates": 58,
+      "by_group": {
+        "legacy_templates": {
+          "n": 49,
+          "recall@10": 0.9285714285714286,
+          "mrr": 0.8486394557823129,
+          "ndcg@10": 0.8288974975803494
+        },
+        "handwritten": {
+          "n": 38,
+          "recall@10": 0.8464912280701754,
+          "mrr": 0.9298245614035089,
+          "ndcg@10": 0.84110185685075
+        }
+      },
+      "status_counts": {
+        "ok": 96
+      },
+      "unanswerable_returning_candidates": "9/9",
+      "counts_mean": {
+        "dense_hits": 20.166666666666668,
+        "bm25_hits": 16.895833333333332,
+        "union_before_dedupe": 37.0625,
+        "after_dedupe": 21.197916666666668,
+        "reranked_pool": 16.197916666666668,
+        "below_threshold": 0.0,
+        "returned": 9.510416666666666
+      },
+      "n_answerable": 87,
+      "n_unanswerable_excluded": 9
+    },
+    {
+      "id": "B+alias",
+      "name": "BM25 only (alias-assisted)",
+      "purpose": "lexical retrieval",
+      "status": "ran",
+      "config": {
+        "name": "B+alias",
+        "use_dense": false,
+        "use_bm25": true,
+        "k_candidates": 20,
+        "rrf_k": 60,
+        "use_filters": false,
+        "per_entity": false,
+        "implicit_routing": true,
+        "alias_expansion": true,
+        "rerank_pool": 20,
+        "final_k": 10,
+        "soft_boost": 0.0,
+        "company_quota": false,
+        "assemble_tables": true,
+        "reranker": "none",
+        "min_relevance": null
+      },
+      "components_executed": [
+        "bm25",
+        "alias_expansion"
+      ],
+      "metrics": {
+        "recall@5": 0.7825670498084291,
+        "recall@10": 0.9444444444444445,
+        "precision@5": 0.2988505747126437,
+        "mrr": 0.6545338441890166,
+        "ndcg@5": 0.648087230557094,
+        "ndcg@10": 0.6953975394925358,
+        "source_page_hit": 0.9080459770114943,
+        "company_year_hit": 0.9230769230769231,
+        "metric_table_hit": 0.8714285714285714,
+        "row_evidence_hit": 0.8695652173913043,
+        "company_coverage": 0.9848484848484849,
+        "company_full_coverage": 0.9545454545454546,
+        "scope_match@1": 0.8717948717948718
+      },
+      "metric_n": {
+        "recall@5": 87,
+        "recall@10": 87,
+        "precision@5": 87,
+        "mrr": 87,
+        "ndcg@5": 87,
+        "ndcg@10": 87,
+        "source_page_hit": 87,
+        "company_year_hit": 65,
+        "metric_table_hit": 70,
+        "row_evidence_hit": 69,
+        "company_coverage": 22,
+        "company_full_coverage": 22,
+        "scope_match@1": 39
+      },
+      "by_category": {
+        "historical": {
+          "recall@10": 1.0,
+          "mrr": 0.5366666666666666,
+          "ndcg@10": 0.5882501259155328,
+          "n": 10
+        },
+        "multi_company": {
+          "recall@10": 0.9351851851851851,
+          "mrr": 0.925925925925926,
+          "ndcg@10": 0.8750581761167635,
+          "n": 18
+        },
+        "numeric_lookup": {
+          "recall@10": 0.8928571428571429,
+          "mrr": 0.5666666666666667,
+          "ndcg@10": 0.6326150344837398,
+          "n": 14
+        },
+        "paraphrase": {
+          "recall@10": 0.9375,
+          "mrr": 0.4895833333333333,
+          "ndcg@10": 0.5984267240087333,
+          "n": 16
+        },
+        "qualitative": {
+          "recall@10": 0.9222222222222223,
+          "mrr": 0.7333333333333333,
+          "ndcg@10": 0.7172590493060651,
+          "n": 15
+        },
+        "scope": {
+          "recall@10": 1.0,
+          "mrr": 0.45555555555555555,
+          "ndcg@10": 0.5978655549220124,
+          "n": 8
+        },
+        "terminology": {
+          "recall@10": 1.0,
+          "mrr": 0.75,
+          "ndcg@10": 0.8154648767857288,
+          "n": 6
+        }
+      },
+      "latency": {
+        "analysis": {
+          "p50_ms": 0.07579149678349495,
+          "p95_ms": 0.09933925466611981,
+          "mean_ms": 0.07799376471666619,
+          "n": 480
+        },
+        "dense": {
+          "p50_ms": 0.0,
+          "p95_ms": 0.0,
+          "mean_ms": 0.0,
+          "n": 480
+        },
+        "bm25": {
+          "p50_ms": 0.098041957244277,
+          "p95_ms": 0.15570247778668997,
+          "mean_ms": 0.09477946781165277,
+          "n": 480
+        },
+        "fusion": {
+          "p50_ms": 0.006812508217990398,
+          "p95_ms": 0.00716610811650753,
+          "mean_ms": 0.006736117938999087,
+          "n": 480
+        },
+        "rerank": {
+          "p50_ms": 0.000125030055642128,
+          "p95_ms": 0.0001270673237740975,
+          "mean_ms": 0.00011275503008315961,
+          "n": 480
+        },
+        "total": {
+          "p50_ms": 0.2048335736617446,
+          "p95_ms": 0.265739858150482,
+          "mean_ms": 0.19884931680280715,
+          "n": 480
+        }
+      },
+      "template_macro": {
+        "recall@10": 0.92816091954023,
+        "mrr": 0.6911877394636016,
+        "ndcg@10": 0.711121357553741
+      },
+      "n_templates": 58,
+      "by_group": {
+        "legacy_templates": {
+          "n": 49,
+          "recall@10": 0.9795918367346939,
+          "mrr": 0.6112244897959184,
+          "ndcg@10": 0.6805951666478245
+        },
+        "handwritten": {
+          "n": 38,
+          "recall@10": 0.8991228070175438,
+          "mrr": 0.7103801169590643,
+          "ndcg@10": 0.7144848097396634
+        }
+      },
+      "status_counts": {
+        "ok": 96
+      },
+      "unanswerable_returning_candidates": "9/9",
+      "counts_mean": {
+        "dense_hits": 0.0,
+        "bm25_hits": 19.416666666666668,
+        "union_before_dedupe": 19.416666666666668,
+        "after_dedupe": 19.416666666666668,
+        "reranked_pool": 0.0,
+        "below_threshold": 0.0,
+        "returned": 9.958333333333334
+      },
+      "n_answerable": 87,
+      "n_unanswerable_excluded": 9
+    },
+    {
+      "id": "C+alias",
+      "name": "Dense + BM25 + RRF [dense = hashing stand-in]",
+      "purpose": "hybrid vs single retrievers",
+      "status": "ran",
+      "config": {
+        "name": "C+alias",
+        "use_dense": true,
+        "use_bm25": true,
+        "k_candidates": 20,
+        "rrf_k": 60,
+        "use_filters": false,
+        "per_entity": false,
+        "implicit_routing": true,
+        "alias_expansion": true,
+        "rerank_pool": 20,
+        "final_k": 10,
+        "soft_boost": 0.0,
+        "company_quota": false,
+        "assemble_tables": true,
+        "reranker": "none",
+        "min_relevance": null
+      },
+      "components_executed": [
+        "dense",
+        "bm25",
+        "rrf",
+        "alias_expansion"
+      ],
+      "metrics": {
+        "recall@5": 0.7969348659003831,
+        "recall@10": 0.900383141762452,
+        "precision@5": 0.30114942528735633,
+        "mrr": 0.6344006568144499,
+        "ndcg@5": 0.6233341019380312,
+        "ndcg@10": 0.6515124021097553,
+        "source_page_hit": 0.9655172413793104,
+        "company_year_hit": 0.9846153846153847,
+        "metric_table_hit": 0.8857142857142857,
+        "row_evidence_hit": 0.8260869565217391,
+        "company_coverage": 0.9848484848484849,
+        "company_full_coverage": 0.9545454545454546,
+        "scope_match@1": 0.9487179487179487
+      },
+      "metric_n": {
+        "recall@5": 87,
+        "recall@10": 87,
+        "precision@5": 87,
+        "mrr": 87,
+        "ndcg@5": 87,
+        "ndcg@10": 87,
+        "source_page_hit": 87,
+        "company_year_hit": 65,
+        "metric_table_hit": 70,
+        "row_evidence_hit": 69,
+        "company_coverage": 22,
+        "company_full_coverage": 22,
+        "scope_match@1": 39
+      },
+      "by_category": {
+        "historical": {
+          "recall@10": 0.9,
+          "mrr": 0.5366666666666666,
+          "ndcg@10": 0.5775296646517135,
+          "n": 10
+        },
+        "multi_company": {
+          "recall@10": 0.8796296296296297,
+          "mrr": 0.8101851851851852,
+          "ndcg@10": 0.7650239415519601,
+          "n": 18
+        },
+        "numeric_lookup": {
+          "recall@10": 0.9642857142857143,
+          "mrr": 0.5857142857142856,
+          "ndcg@10": 0.6588489977448412,
+          "n": 14
+        },
+        "paraphrase": {
+          "recall@10": 0.78125,
+          "mrr": 0.5145833333333333,
+          "ndcg@10": 0.48179135072155943,
+          "n": 16
+        },
+        "qualitative": {
+          "recall@10": 0.9,
+          "mrr": 0.65,
+          "ndcg@10": 0.6715855620184059,
+          "n": 15
+        },
+        "scope": {
+          "recall@10": 1.0,
+          "mrr": 0.5907738095238095,
+          "ndcg@10": 0.6709576089630707,
+          "n": 8
+        },
+        "terminology": {
+          "recall@10": 1.0,
+          "mrr": 0.7222222222222222,
+          "ndcg@10": 0.793643251190486,
+          "n": 6
+        }
+      },
+      "latency": {
+        "analysis": {
+          "p50_ms": 0.07675006054341793,
+          "p95_ms": 0.10063123190775514,
+          "mean_ms": 0.07903289661044255,
+          "n": 480
+        },
+        "dense": {
+          "p50_ms": 0.057770637795329094,
+          "p95_ms": 0.06430654320865868,
+          "mean_ms": 0.057853046261395015,
+          "n": 480
+        },
+        "bm25": {
+          "p50_ms": 0.0979170436039567,
+          "p95_ms": 0.15424753073602912,
+          "mean_ms": 0.09481235125955816,
+          "n": 480
+        },
+        "fusion": {
+          "p50_ms": 0.0251460587605834,
+          "p95_ms": 0.030458031687885523,
+          "mean_ms": 0.02558211999712512,
+          "n": 480
+        },
+        "rerank": {
+          "p50_ms": 0.000125030055642128,
+          "p95_ms": 0.00016693957149982452,
+          "mean_ms": 0.000129306863527745,
+          "n": 480
+        },
+        "total": {
+          "p50_ms": 0.2869368763640523,
+          "p95_ms": 0.35839958582073445,
+          "mean_ms": 0.27969631628366187,
+          "n": 480
+        }
+      },
+      "template_macro": {
+        "recall@10": 0.8908045977011494,
+        "mrr": 0.6515051997810618,
+        "ndcg@10": 0.6592560324593533
+      },
+      "n_templates": 58,
+      "by_group": {
+        "legacy_templates": {
+          "n": 49,
+          "recall@10": 0.9285714285714286,
+          "mrr": 0.6204081632653061,
+          "ndcg@10": 0.654260205543066
+        },
+        "handwritten": {
+          "n": 38,
+          "recall@10": 0.8640350877192983,
+          "mrr": 0.6524436090225564,
+          "ndcg@10": 0.6479691818931178
+        }
+      },
+      "status_counts": {
+        "ok": 96
+      },
+      "unanswerable_returning_candidates": "9/9",
+      "counts_mean": {
+        "dense_hits": 20.0,
+        "bm25_hits": 19.416666666666668,
+        "union_before_dedupe": 39.416666666666664,
+        "after_dedupe": 25.71875,
+        "reranked_pool": 0.0,
+        "below_threshold": 0.0,
+        "returned": 10.0
+      },
+      "n_answerable": 87,
+      "n_unanswerable_excluded": 9
+    },
+    {
+      "id": "D+alias",
+      "name": "Hybrid + RRF + rerank (stand-in heuristic) [dense = hashing stand-in]",
+      "purpose": "value of the rerank stage",
+      "status": "ran",
+      "config": {
+        "name": "D+alias",
+        "use_dense": true,
+        "use_bm25": true,
+        "k_candidates": 20,
+        "rrf_k": 60,
+        "use_filters": false,
+        "per_entity": false,
+        "implicit_routing": true,
+        "alias_expansion": true,
+        "rerank_pool": 20,
+        "final_k": 10,
+        "soft_boost": 0.0,
+        "company_quota": false,
+        "assemble_tables": true,
+        "reranker": "lexical-feature-heuristic",
+        "min_relevance": null
+      },
+      "components_executed": [
+        "dense",
+        "bm25",
+        "rrf",
+        "alias_expansion",
+        "rerank:lexical-feature-heuristic"
+      ],
+      "metrics": {
+        "recall@5": 0.8467432950191571,
+        "recall@10": 0.946360153256705,
+        "precision@5": 0.32413793103448274,
+        "mrr": 0.846898376208721,
+        "ndcg@5": 0.780427520771978,
+        "ndcg@10": 0.8147920711787409,
+        "source_page_hit": 0.9540229885057471,
+        "company_year_hit": 1.0,
+        "metric_table_hit": 0.9571428571428572,
+        "row_evidence_hit": 0.8985507246376812,
+        "company_coverage": 1.0,
+        "company_full_coverage": 1.0,
+        "scope_match@1": 0.9743589743589743
+      },
+      "metric_n": {
+        "recall@5": 87,
+        "recall@10": 87,
+        "precision@5": 87,
+        "mrr": 87,
+        "ndcg@5": 87,
+        "ndcg@10": 87,
+        "source_page_hit": 87,
+        "company_year_hit": 65,
+        "metric_table_hit": 70,
+        "row_evidence_hit": 69,
+        "company_coverage": 22,
+        "company_full_coverage": 22,
+        "scope_match@1": 39
+      },
+      "by_category": {
+        "historical": {
+          "recall@10": 1.0,
+          "mrr": 0.9199999999999999,
+          "ndcg@10": 0.9375325938735648,
+          "n": 10
+        },
+        "multi_company": {
+          "recall@10": 0.8611111111111112,
+          "mrr": 0.8518518518518519,
+          "ndcg@10": 0.8018456514129513,
+          "n": 18
+        },
+        "numeric_lookup": {
+          "recall@10": 0.9285714285714286,
+          "mrr": 0.8928571428571429,
+          "ndcg@10": 0.816693007692476,
+          "n": 14
+        },
+        "paraphrase": {
+          "recall@10": 1.0,
+          "mrr": 0.8072916666666666,
+          "ndcg@10": 0.7616320533389759,
+          "n": 16
+        },
+        "qualitative": {
+          "recall@10": 0.9222222222222223,
+          "mrr": 0.6931216931216931,
+          "ndcg@10": 0.6851213735804734,
+          "n": 15
+        },
+        "scope": {
+          "recall@10": 1.0,
+          "mrr": 0.9166666666666666,
+          "ndcg@10": 0.8977158704445379,
+          "n": 8
+        },
+        "terminology": {
+          "recall@10": 1.0,
+          "mrr": 1.0,
+          "ndcg@10": 1.0,
+          "n": 6
+        }
+      },
+      "latency": {
+        "analysis": {
+          "p50_ms": 0.07687543984502554,
+          "p95_ms": 0.10042120702564716,
+          "mean_ms": 0.07927846794094269,
+          "n": 480
+        },
+        "dense": {
+          "p50_ms": 0.05793687887489796,
+          "p95_ms": 0.06400422425940633,
+          "mean_ms": 0.05796778180714076,
+          "n": 480
+        },
+        "bm25": {
+          "p50_ms": 0.09958352893590927,
+          "p95_ms": 0.15496225096285343,
+          "mean_ms": 0.09587469248799607,
+          "n": 480
+        },
+        "fusion": {
+          "p50_ms": 0.02575002145022154,
+          "p95_ms": 0.029466312844306224,
+          "mean_ms": 0.025738251861184835,
+          "n": 480
+        },
+        "rerank": {
+          "p50_ms": 0.16797950956970453,
+          "p95_ms": 0.19354934338480234,
+          "mean_ms": 0.17103592351001376,
+          "n": 480
+        },
+        "total": {
+          "p50_ms": 0.4591254983097315,
+          "p95_ms": 0.526345358230173,
+          "mean_ms": 0.4515241637515525,
+          "n": 480
+        }
+      },
+      "template_macro": {
+        "recall@10": 0.9195402298850575,
+        "mrr": 0.8414568509396096,
+        "ndcg@10": 0.7956323371276288
+      },
+      "n_templates": 58,
+      "by_group": {
+        "legacy_templates": {
+          "n": 49,
+          "recall@10": 1.0,
+          "mrr": 0.873744735989634,
+          "ndcg@10": 0.865088287670533
+        },
+        "handwritten": {
+          "n": 38,
+          "recall@10": 0.8771929824561404,
+          "mrr": 0.8122807017543859,
+          "ndcg@10": 0.7499364235972193
+        }
+      },
+      "status_counts": {
+        "ok": 96
+      },
+      "unanswerable_returning_candidates": "9/9",
+      "counts_mean": {
+        "dense_hits": 20.0,
+        "bm25_hits": 19.416666666666668,
+        "union_before_dedupe": 39.416666666666664,
+        "after_dedupe": 25.71875,
+        "reranked_pool": 20.0,
+        "below_threshold": 0.0,
+        "returned": 10.0
+      },
+      "n_answerable": 87,
+      "n_unanswerable_excluded": 9
+    },
+    {
+      "id": "E+alias",
+      "name": "Hybrid + RRF + metadata filters [dense = hashing stand-in]",
+      "purpose": "company/year/scope filtering",
+      "status": "ran",
+      "config": {
+        "name": "E+alias",
+        "use_dense": true,
+        "use_bm25": true,
+        "k_candidates": 20,
+        "rrf_k": 60,
+        "use_filters": true,
+        "per_entity": true,
+        "implicit_routing": true,
+        "alias_expansion": true,
+        "rerank_pool": 20,
+        "final_k": 10,
+        "soft_boost": 0.1,
+        "company_quota": true,
+        "assemble_tables": true,
+        "reranker": "none",
+        "min_relevance": null
+      },
+      "components_executed": [
+        "dense",
+        "bm25",
+        "rrf",
+        "metadata_filters",
+        "per_entity_retrieval",
+        "alias_expansion"
+      ],
+      "metrics": {
+        "recall@5": 0.8850574712643678,
+        "recall@10": 0.9090038314176244,
+        "precision@5": 0.32873563218390806,
+        "mrr": 0.8583470169677065,
+        "ndcg@5": 0.8141548990707681,
+        "ndcg@10": 0.8229403433354955,
+        "source_page_hit": 0.9770114942528736,
+        "company_year_hit": 1.0,
+        "metric_table_hit": 0.9714285714285714,
+        "row_evidence_hit": 0.9565217391304348,
+        "company_coverage": 0.9848484848484849,
+        "company_full_coverage": 0.9545454545454546,
+        "scope_match@1": 1.0
+      },
+      "metric_n": {
+        "recall@5": 87,
+        "recall@10": 87,
+        "precision@5": 87,
+        "mrr": 87,
+        "ndcg@5": 87,
+        "ndcg@10": 87,
+        "source_page_hit": 87,
+        "company_year_hit": 65,
+        "metric_table_hit": 70,
+        "row_evidence_hit": 69,
+        "company_coverage": 22,
+        "company_full_coverage": 22,
+        "scope_match@1": 39
+      },
+      "by_category": {
+        "historical": {
+          "recall@10": 0.8,
+          "mrr": 1.0,
+          "ndcg@10": 0.8028046340893231,
+          "n": 10
+        },
+        "multi_company": {
+          "recall@10": 0.8101851851851852,
+          "mrr": 0.8412698412698413,
+          "ndcg@10": 0.769981270597009,
+          "n": 18
+        },
+        "numeric_lookup": {
+          "recall@10": 0.9285714285714286,
+          "mrr": 0.9428571428571428,
+          "ndcg@10": 0.9008280686149209,
+          "n": 14
+        },
+        "paraphrase": {
+          "recall@10": 1.0,
+          "mrr": 0.75,
+          "ndcg@10": 0.8027981623089468,
+          "n": 16
+        },
+        "qualitative": {
+          "recall@10": 0.9,
+          "mrr": 0.6888888888888889,
+          "ndcg@10": 0.7055836424133576,
+          "n": 15
+        },
+        "scope": {
+          "recall@10": 1.0,
+          "mrr": 1.0,
+          "ndcg@10": 0.9584978080995372,
+          "n": 8
+        },
+        "terminology": {
+          "recall@10": 1.0,
+          "mrr": 1.0,
+          "ndcg@10": 1.0,
+          "n": 6
+        }
+      },
+      "latency": {
+        "analysis": {
+          "p50_ms": 0.07706298492848873,
+          "p95_ms": 0.09985375218093394,
+          "mean_ms": 0.079096285723305,
+          "n": 480
+        },
+        "dense": {
+          "p50_ms": 0.13929209671914577,
+          "p95_ms": 0.41756109567359084,
+          "mean_ms": 0.16928317684990665,
+          "n": 480
+        },
+        "bm25": {
+          "p50_ms": 0.1995415659621358,
+          "p95_ms": 0.5564357503317297,
+          "mean_ms": 0.2257574456355845,
+          "n": 480
+        },
+        "fusion": {
+          "p50_ms": 0.023812404833734035,
+          "p95_ms": 0.07014384027570485,
+          "mean_ms": 0.02901571230419601,
+          "n": 480
+        },
+        "rerank": {
+          "p50_ms": 0.000125030055642128,
+          "p95_ms": 0.00016693957149982452,
+          "mean_ms": 0.00013596339461704096,
+          "n": 480
+        },
+        "total": {
+          "p50_ms": 0.4604579880833626,
+          "p95_ms": 1.1678144452162083,
+          "mean_ms": 0.5257881139793122,
+          "n": 480
+        }
+      },
+      "template_macro": {
+        "recall@10": 0.8807471264367817,
+        "mrr": 0.869896004378763,
+        "ndcg@10": 0.8184645521809508
+      },
+      "n_templates": 58,
+      "by_group": {
+        "legacy_templates": {
+          "n": 49,
+          "recall@10": 0.9642857142857143,
+          "mrr": 0.8537414965986395,
+          "ndcg@10": 0.8481102565017684
+        },
+        "handwritten": {
+          "n": 38,
+          "recall@10": 0.837719298245614,
+          "mrr": 0.8642857142857142,
+          "ndcg@10": 0.7904844026737223
+        }
+      },
+      "status_counts": {
+        "ok": 96
+      },
+      "unanswerable_returning_candidates": "9/9",
+      "counts_mean": {
+        "dense_hits": 20.166666666666668,
+        "bm25_hits": 17.208333333333332,
+        "union_before_dedupe": 37.375,
+        "after_dedupe": 21.34375,
+        "reranked_pool": 0.0,
+        "below_threshold": 0.0,
+        "returned": 9.510416666666666
+      },
+      "n_answerable": 87,
+      "n_unanswerable_excluded": 9
+    },
+    {
+      "id": "F+alias",
+      "name": "Hybrid + RRF + filters + rerank (stand-in heuristic) [dense = hashing stand-in]",
+      "purpose": "full pipeline",
+      "status": "ran",
+      "config": {
+        "name": "F+alias",
+        "use_dense": true,
+        "use_bm25": true,
+        "k_candidates": 20,
+        "rrf_k": 60,
+        "use_filters": true,
+        "per_entity": true,
+        "implicit_routing": true,
+        "alias_expansion": true,
+        "rerank_pool": 20,
+        "final_k": 10,
+        "soft_boost": 0.1,
+        "company_quota": true,
+        "assemble_tables": true,
+        "reranker": "lexical-feature-heuristic",
+        "min_relevance": null
+      },
+      "components_executed": [
+        "dense",
+        "bm25",
+        "rrf",
+        "metadata_filters",
+        "per_entity_retrieval",
+        "alias_expansion",
+        "rerank:lexical-feature-heuristic"
+      ],
+      "metrics": {
+        "recall@5": 0.900383141762452,
+        "recall@10": 0.9204980842911877,
+        "precision@5": 0.34022988505747126,
+        "mrr": 0.900383141762452,
+        "ndcg@5": 0.8622750527155838,
+        "ndcg@10": 0.8674768950012044,
+        "source_page_hit": 1.0,
+        "company_year_hit": 1.0,
+        "metric_table_hit": 0.9714285714285714,
+        "row_evidence_hit": 0.9565217391304348,
+        "company_coverage": 1.0,
+        "company_full_coverage": 1.0,
+        "scope_match@1": 1.0
+      },
+      "metric_n": {
+        "recall@5": 87,
+        "recall@10": 87,
+        "precision@5": 87,
+        "mrr": 87,
+        "ndcg@5": 87,
+        "ndcg@10": 87,
+        "source_page_hit": 87,
+        "company_year_hit": 65,
+        "metric_table_hit": 70,
+        "row_evidence_hit": 69,
+        "company_coverage": 22,
+        "company_full_coverage": 22,
+        "scope_match@1": 39
+      },
+      "by_category": {
+        "historical": {
+          "recall@10": 0.8,
+          "mrr": 1.0,
+          "ndcg@10": 0.9148618411963888,
+          "n": 10
+        },
+        "multi_company": {
+          "recall@10": 0.8472222222222222,
+          "mrr": 0.9166666666666666,
+          "ndcg@10": 0.8472121011557432,
+          "n": 18
+        },
+        "numeric_lookup": {
+          "recall@10": 0.9285714285714286,
+          "mrr": 0.9523809523809524,
+          "ndcg@10": 0.9180307729231055,
+          "n": 14
+        },
+        "paraphrase": {
+          "recall@10": 1.0,
+          "mrr": 0.71875,
+          "ndcg@10": 0.7597889040657334,
+          "n": 16
+        },
+        "qualitative": {
+          "recall@10": 0.9222222222222223,
+          "mrr": 0.8666666666666667,
+          "ndcg@10": 0.8263345254377341,
+          "n": 15
+        },
+        "scope": {
+          "recall@10": 1.0,
+          "mrr": 1.0,
+          "ndcg@10": 0.9584978080995372,
+          "n": 8
+        },
+        "terminology": {
+          "recall@10": 1.0,
+          "mrr": 1.0,
+          "ndcg@10": 1.0,
+          "n": 6
+        }
+      },
+      "latency": {
+        "analysis": {
+          "p50_ms": 0.07731246296316385,
+          "p95_ms": 0.10096423793584108,
+          "mean_ms": 0.07962244999362156,
+          "n": 480
+        },
+        "dense": {
+          "p50_ms": 0.14010397717356682,
+          "p95_ms": 0.4201351548545062,
+          "mean_ms": 0.17049966215078408,
+          "n": 480
+        },
+        "bm25": {
+          "p50_ms": 0.1961250090971589,
+          "p95_ms": 0.5544630461372435,
+          "mean_ms": 0.2256003213309062,
+          "n": 480
+        },
+        "fusion": {
+          "p50_ms": 0.02418749500066042,
+          "p95_ms": 0.07088544080033897,
+          "mean_ms": 0.02948251300646613,
+          "n": 480
+        },
+        "rerank": {
+          "p50_ms": 0.1662500435486436,
+          "p95_ms": 0.1918937894515693,
+          "mean_ms": 0.14148895958593735,
+          "n": 480
+        },
+        "total": {
+          "p50_ms": 0.5948749603703618,
+          "p95_ms": 1.3724266667850316,
+          "mean_ms": 0.6699977369862609,
+          "n": 480
+        }
+      },
+      "template_macro": {
+        "recall@10": 0.8979885057471265,
+        "mrr": 0.9195402298850575,
+        "ndcg@10": 0.8654581524473351
+      },
+      "n_templates": 58,
+      "by_group": {
+        "legacy_templates": {
+          "n": 49,
+          "recall@10": 0.9642857142857143,
+          "mrr": 0.8775510204081632,
+          "ndcg@10": 0.8832852926078825
+        },
+        "handwritten": {
+          "n": 38,
+          "recall@10": 0.8640350877192983,
+          "mrr": 0.9298245614035089,
+          "ndcg@10": 0.8470923822978564
+        }
+      },
+      "status_counts": {
+        "ok": 96
+      },
+      "unanswerable_returning_candidates": "9/9",
+      "counts_mean": {
+        "dense_hits": 20.166666666666668,
+        "bm25_hits": 17.208333333333332,
+        "union_before_dedupe": 37.375,
+        "after_dedupe": 21.34375,
+        "reranked_pool": 16.197916666666668,
+        "below_threshold": 0.0,
+        "returned": 9.510416666666666
+      },
+      "n_answerable": 87,
+      "n_unanswerable_excluded": 9
+    },
+    {
+      "id": "C@10",
+      "name": "Hybrid, 10 candidates/retriever [dense = hashing stand-in]",
+      "purpose": "candidate-pool sweep",
+      "status": "ran",
+      "config": {
+        "name": "C@10",
+        "use_dense": true,
+        "use_bm25": true,
+        "k_candidates": 10,
+        "rrf_k": 60,
+        "use_filters": false,
+        "per_entity": false,
+        "implicit_routing": true,
+        "alias_expansion": false,
+        "rerank_pool": 20,
+        "final_k": 10,
+        "soft_boost": 0.0,
+        "company_quota": false,
+        "assemble_tables": true,
+        "reranker": "none",
+        "min_relevance": null
+      },
+      "components_executed": [
+        "dense",
+        "bm25",
+        "rrf"
+      ],
+      "metrics": {
+        "recall@5": 0.7318007662835249,
+        "recall@10": 0.8438697318007663,
+        "precision@5": 0.2850574712643678,
+        "mrr": 0.599904214559387,
+        "ndcg@5": 0.5818455623875803,
+        "ndcg@10": 0.6160962200179123,
+        "source_page_hit": 0.9080459770114943,
+        "company_year_hit": 0.9538461538461539,
+        "metric_table_hit": 0.8142857142857143,
+        "row_evidence_hit": 0.7391304347826086,
+        "company_coverage": 0.9696969696969696,
+        "company_full_coverage": 0.9090909090909091,
+        "scope_match@1": 0.9487179487179487
+      },
+      "metric_n": {
+        "recall@5": 87,
+        "recall@10": 87,
+        "precision@5": 87,
+        "mrr": 87,
+        "ndcg@5": 87,
+        "ndcg@10": 87,
+        "source_page_hit": 87,
+        "company_year_hit": 65,
+        "metric_table_hit": 70,
+        "row_evidence_hit": 69,
+        "company_coverage": 22,
+        "company_full_coverage": 22,
+        "scope_match@1": 39
+      },
+      "by_category": {
+        "historical": {
+          "recall@10": 0.9,
+          "mrr": 0.5366666666666666,
+          "ndcg@10": 0.5775296646517135,
+          "n": 10
+        },
+        "multi_company": {
+          "recall@10": 0.8287037037037037,
+          "mrr": 0.7685185185185186,
+          "ndcg@10": 0.7496309947597085,
+          "n": 18
+        },
+        "numeric_lookup": {
+          "recall@10": 0.8928571428571429,
+          "mrr": 0.5684523809523809,
+          "ndcg@10": 0.6332921032996472,
+          "n": 14
+        },
+        "paraphrase": {
+          "recall@10": 0.59375,
+          "mrr": 0.38229166666666664,
+          "ndcg@10": 0.3208809023799738,
+          "n": 16
+        },
+        "qualitative": {
+          "recall@10": 0.9,
+          "mrr": 0.6555555555555556,
+          "ndcg@10": 0.6778666156840507,
+          "n": 15
+        },
+        "scope": {
+          "recall@10": 1.0,
+          "mrr": 0.59375,
+          "ndcg@10": 0.6752092453360203,
+          "n": 8
+        },
+        "terminology": {
+          "recall@10": 1.0,
+          "mrr": 0.7222222222222222,
+          "ndcg@10": 0.793643251190486,
+          "n": 6
+        }
+      },
+      "latency": {
+        "analysis": {
+          "p50_ms": 0.07633306086063385,
+          "p95_ms": 0.09897041600197552,
+          "mean_ms": 0.07815435334729652,
+          "n": 480
+        },
+        "dense": {
+          "p50_ms": 0.05247897934168577,
+          "p95_ms": 0.0595850870013237,
+          "mean_ms": 0.05266348016448319,
+          "n": 480
+        },
+        "bm25": {
+          "p50_ms": 0.08685397915542126,
+          "p95_ms": 0.14108303003013134,
+          "mean_ms": 0.08210699161281809,
+          "n": 480
+        },
+        "fusion": {
+          "p50_ms": 0.013417098671197891,
+          "p95_ms": 0.015582935884594917,
+          "mean_ms": 0.013687462099672606,
+          "n": 480
+        },
+        "rerank": {
+          "p50_ms": 0.000125030055642128,
+          "p95_ms": 0.00016693957149982452,
+          "mean_ms": 0.00012378198637937507,
+          "n": 480
+        },
+        "total": {
+          "p50_ms": 0.25006255600601435,
+          "p95_ms": 0.3189021139405668,
+          "mean_ms": 0.2469600755527305,
+          "n": 480
+        }
+      },
+      "template_macro": {
+        "recall@10": 0.8405172413793104,
+        "mrr": 0.6275383141762452,
+        "ndcg@10": 0.6360533414088775
+      },
+      "n_templates": 58,
+      "by_group": {
+        "legacy_templates": {
+          "n": 49,
+          "recall@10": 0.8622448979591837,
+          "mrr": 0.5608843537414966,
+          "ndcg@10": 0.5986589831538077
+        },
+        "handwritten": {
+          "n": 38,
+          "recall@10": 0.8201754385964912,
+          "mrr": 0.650219298245614,
+          "ndcg@10": 0.6385810780795208
+        }
+      },
+      "status_counts": {
+        "ok": 96
+      },
+      "unanswerable_returning_candidates": "9/9",
+      "counts_mean": {
+        "dense_hits": 10.0,
+        "bm25_hits": 9.916666666666666,
+        "union_before_dedupe": 19.916666666666668,
+        "after_dedupe": 12.489583333333334,
+        "reranked_pool": 0.0,
+        "below_threshold": 0.0,
+        "returned": 10.0
+      },
+      "n_answerable": 87,
+      "n_unanswerable_excluded": 9
+    },
+    {
+      "id": "E@10",
+      "name": "Hybrid + filters, 10 candidates/retriever [dense = hashing stand-in]",
+      "purpose": "candidate-pool sweep",
+      "status": "ran",
+      "config": {
+        "name": "E@10",
+        "use_dense": true,
+        "use_bm25": true,
+        "k_candidates": 10,
+        "rrf_k": 60,
+        "use_filters": true,
+        "per_entity": true,
+        "implicit_routing": true,
+        "alias_expansion": false,
+        "rerank_pool": 20,
+        "final_k": 10,
+        "soft_boost": 0.1,
+        "company_quota": true,
+        "assemble_tables": true,
+        "reranker": "none",
+        "min_relevance": null
+      },
+      "components_executed": [
+        "dense",
+        "bm25",
+        "rrf",
+        "metadata_filters",
+        "per_entity_retrieval"
+      ],
+      "metrics": {
+        "recall@5": 0.8572796934865899,
+        "recall@10": 0.8955938697318008,
+        "precision@5": 0.3149425287356322,
+        "mrr": 0.7957033388067871,
+        "ndcg@5": 0.7623449537999673,
+        "ndcg@10": 0.7785026183991136,
+        "source_page_hit": 0.9770114942528736,
+        "company_year_hit": 1.0,
+        "metric_table_hit": 0.9714285714285714,
+        "row_evidence_hit": 0.9130434782608695,
+        "company_coverage": 0.9696969696969696,
+        "company_full_coverage": 0.9090909090909091,
+        "scope_match@1": 1.0
+      },
+      "metric_n": {
+        "recall@5": 87,
+        "recall@10": 87,
+        "precision@5": 87,
+        "mrr": 87,
+        "ndcg@5": 87,
+        "ndcg@10": 87,
+        "source_page_hit": 87,
+        "company_year_hit": 65,
+        "metric_table_hit": 70,
+        "row_evidence_hit": 69,
+        "company_coverage": 22,
+        "company_full_coverage": 22,
+        "scope_match@1": 39
+      },
+      "by_category": {
+        "historical": {
+          "recall@10": 0.8,
+          "mrr": 0.925,
+          "ndcg@10": 0.7626345254710636,
+          "n": 10
+        },
+        "multi_company": {
+          "recall@10": 0.7731481481481481,
+          "mrr": 0.7857142857142857,
+          "ndcg@10": 0.7556456647253155,
+          "n": 18
+        },
+        "numeric_lookup": {
+          "recall@10": 0.9285714285714286,
+          "mrr": 0.9523809523809524,
+          "ndcg@10": 0.906895442076643,
+          "n": 14
+        },
+        "paraphrase": {
+          "recall@10": 0.96875,
+          "mrr": 0.5104166666666666,
+          "ndcg@10": 0.5991262067123585,
+          "n": 16
+        },
+        "qualitative": {
+          "recall@10": 0.9,
+          "mrr": 0.6888888888888889,
+          "ndcg@10": 0.7034148413126357,
+          "n": 15
+        },
+        "scope": {
+          "recall@10": 1.0,
+          "mrr": 1.0,
+          "ndcg@10": 0.9584978080995372,
+          "n": 8
+        },
+        "terminology": {
+          "recall@10": 1.0,
+          "mrr": 1.0,
+          "ndcg@10": 1.0,
+          "n": 6
+        }
+      },
+      "latency": {
+        "analysis": {
+          "p50_ms": 0.07704203017055988,
+          "p95_ms": 0.09950824314728378,
+          "mean_ms": 0.078801913089895,
+          "n": 480
+        },
+        "dense": {
+          "p50_ms": 0.13785448390990496,
+          "p95_ms": 0.4160598851740359,
+          "mean_ms": 0.16654100036248565,
+          "n": 480
+        },
+        "bm25": {
+          "p50_ms": 0.18737453501671553,
+          "p95_ms": 0.5586496903561053,
+          "mean_ms": 0.21293311438057572,
+          "n": 480
+        },
+        "fusion": {
+          "p50_ms": 0.01627055462449789,
+          "p95_ms": 0.04121928941458463,
+          "mean_ms": 0.020224909045888733,
+          "n": 480
+        },
+        "rerank": {
+          "p50_ms": 0.000125030055642128,
+          "p95_ms": 0.0001671724021434784,
+          "mean_ms": 0.00013840472092851996,
+          "n": 480
+        },
+        "total": {
+          "p50_ms": 0.43864548206329346,
+          "p95_ms": 1.1456855922006066,
+          "mean_ms": 0.5001859555098539,
+          "n": 480
+        }
+      },
+      "template_macro": {
+        "recall@10": 0.8663793103448276,
+        "mrr": 0.819991789819376,
+        "ndcg@10": 0.78872725776221
+      },
+      "n_templates": 58,
+      "by_group": {
+        "legacy_templates": {
+          "n": 49,
+          "recall@10": 0.9540816326530612,
+          "mrr": 0.7755102040816326,
+          "ndcg@10": 0.7818263152302702
+        },
+        "handwritten": {
+          "n": 38,
+          "recall@10": 0.8201754385964912,
+          "mrr": 0.8217418546365914,
+          "ndcg@10": 0.7742167988010431
+        }
+      },
+      "status_counts": {
+        "ok": 96
+      },
+      "unanswerable_returning_candidates": "9/9",
+      "counts_mean": {
+        "dense_hits": 12.166666666666666,
+        "bm25_hits": 11.25,
+        "union_before_dedupe": 23.416666666666668,
+        "after_dedupe": 14.03125,
+        "reranked_pool": 0.0,
+        "below_threshold": 0.0,
+        "returned": 9.510416666666666
+      },
+      "n_answerable": 87,
+      "n_unanswerable_excluded": 9
+    },
+    {
+      "id": "C@30",
+      "name": "Hybrid, 30 candidates/retriever [dense = hashing stand-in]",
+      "purpose": "candidate-pool sweep",
+      "status": "ran",
+      "config": {
+        "name": "C@30",
+        "use_dense": true,
+        "use_bm25": true,
+        "k_candidates": 30,
+        "rrf_k": 60,
+        "use_filters": false,
+        "per_entity": false,
+        "implicit_routing": true,
+        "alias_expansion": false,
+        "rerank_pool": 20,
+        "final_k": 10,
+        "soft_boost": 0.0,
+        "company_quota": false,
+        "assemble_tables": true,
+        "reranker": "none",
+        "min_relevance": null
+      },
+      "components_executed": [
+        "dense",
+        "bm25",
+        "rrf"
+      ],
+      "metrics": {
+        "recall@5": 0.7203065134099617,
+        "recall@10": 0.8409961685823756,
+        "precision@5": 0.2827586206896552,
+        "mrr": 0.5986042692939245,
+        "ndcg@5": 0.5774029514977002,
+        "ndcg@10": 0.6143653858655768,
+        "source_page_hit": 0.9310344827586207,
+        "company_year_hit": 0.9692307692307692,
+        "metric_table_hit": 0.8428571428571429,
+        "row_evidence_hit": 0.7246376811594203,
+        "company_coverage": 0.9696969696969696,
+        "company_full_coverage": 0.9090909090909091,
+        "scope_match@1": 0.9487179487179487
+      },
+      "metric_n": {
+        "recall@5": 87,
+        "recall@10": 87,
+        "precision@5": 87,
+        "mrr": 87,
+        "ndcg@5": 87,
+        "ndcg@10": 87,
+        "source_page_hit": 87,
+        "company_year_hit": 65,
+        "metric_table_hit": 70,
+        "row_evidence_hit": 69,
+        "company_coverage": 22,
+        "company_full_coverage": 22,
+        "scope_match@1": 39
+      },
+      "by_category": {
+        "historical": {
+          "recall@10": 0.9,
+          "mrr": 0.5366666666666666,
+          "ndcg@10": 0.5775296646517135,
+          "n": 10
+        },
+        "multi_company": {
+          "recall@10": 0.8425925925925926,
+          "mrr": 0.7685185185185186,
+          "ndcg@10": 0.7533716851970509,
+          "n": 18
+        },
+        "numeric_lookup": {
+          "recall@10": 0.9285714285714286,
+          "mrr": 0.5833333333333333,
+          "ndcg@10": 0.6543543215952958,
+          "n": 14
+        },
+        "paraphrase": {
+          "recall@10": 0.53125,
+          "mrr": 0.3636904761904762,
+          "ndcg@10": 0.2911043857785506,
+          "n": 16
+        },
+        "qualitative": {
+          "recall@10": 0.9,
+          "mrr": 0.6555555555555556,
+          "ndcg@10": 0.677710035773513,
+          "n": 15
+        },
+        "scope": {
+          "recall@10": 1.0,
+          "mrr": 0.5907738095238095,
+          "ndcg@10": 0.6709576089630707,
+          "n": 8
+        },
+        "terminology": {
+          "recall@10": 1.0,
+          "mrr": 0.7222222222222222,
+          "ndcg@10": 0.793643251190486,
+          "n": 6
+        }
+      },
+      "latency": {
+        "analysis": {
+          "p50_ms": 0.07554201874881983,
+          "p95_ms": 0.09883521124720573,
+          "mean_ms": 0.07766170553319778,
+          "n": 480
+        },
+        "dense": {
+          "p50_ms": 0.06085401400923729,
+          "p95_ms": 0.06788332248106597,
+          "mean_ms": 0.06124139132831866,
+          "n": 480
+        },
+        "bm25": {
+          "p50_ms": 0.09531201794743538,
+          "p95_ms": 0.14925628202036023,
+          "mean_ms": 0.08894805893457185,
+          "n": 480
+        },
+        "fusion": {
+          "p50_ms": 0.03474997356534004,
+          "p95_ms": 0.038960028905421495,
+          "mean_ms": 0.034630899608600885,
+          "n": 480
+        },
+        "rerank": {
+          "p50_ms": 0.000125030055642128,
+          "p95_ms": 0.00016693957149982452,
+          "mean_ms": 0.00013018628427137932,
+          "n": 480
+        },
+        "total": {
+          "p50_ms": 0.29583333525806665,
+          "p95_ms": 0.3583433455787599,
+          "mean_ms": 0.2866631878229479,
+          "n": 480
+        }
+      },
+      "template_macro": {
+        "recall@10": 0.8477011494252873,
+        "mrr": 0.6290093048713739,
+        "ndcg@10": 0.638933231164544
+      },
+      "n_templates": 58,
+      "by_group": {
+        "legacy_templates": {
+          "n": 49,
+          "recall@10": 0.8469387755102041,
+          "mrr": 0.5548104956268222,
+          "ndcg@10": 0.5903101701384892
+        },
+        "handwritten": {
+          "n": 38,
+          "recall@10": 0.8333333333333334,
+          "mrr": 0.6550751879699248,
+          "ndcg@10": 0.6453839535136634
+        }
+      },
+      "status_counts": {
+        "ok": 96
+      },
+      "unanswerable_returning_candidates": "9/9",
+      "counts_mean": {
+        "dense_hits": 30.0,
+        "bm25_hits": 27.677083333333332,
+        "union_before_dedupe": 57.677083333333336,
+        "after_dedupe": 35.833333333333336,
+        "reranked_pool": 0.0,
+        "below_threshold": 0.0,
+        "returned": 10.0
+      },
+      "n_answerable": 87,
+      "n_unanswerable_excluded": 9
+    },
+    {
+      "id": "E@30",
+      "name": "Hybrid + filters, 30 candidates/retriever [dense = hashing stand-in]",
+      "purpose": "candidate-pool sweep",
+      "status": "ran",
+      "config": {
+        "name": "E@30",
+        "use_dense": true,
+        "use_bm25": true,
+        "k_candidates": 30,
+        "rrf_k": 60,
+        "use_filters": true,
+        "per_entity": true,
+        "implicit_routing": true,
+        "alias_expansion": false,
+        "rerank_pool": 20,
+        "final_k": 10,
+        "soft_boost": 0.1,
+        "company_quota": true,
+        "assemble_tables": true,
+        "reranker": "none",
+        "min_relevance": null
+      },
+      "components_executed": [
+        "dense",
+        "bm25",
+        "rrf",
+        "metadata_filters",
+        "per_entity_retrieval"
+      ],
+      "metrics": {
+        "recall@5": 0.8572796934865899,
+        "recall@10": 0.8812260536398469,
+        "precision@5": 0.3149425287356322,
+        "mrr": 0.7957033388067871,
+        "ndcg@5": 0.762023823207916,
+        "ndcg@10": 0.7725484051895511,
+        "source_page_hit": 0.9770114942528736,
+        "company_year_hit": 1.0,
+        "metric_table_hit": 0.9714285714285714,
+        "row_evidence_hit": 0.9130434782608695,
+        "company_coverage": 0.9696969696969696,
+        "company_full_coverage": 0.9090909090909091,
+        "scope_match@1": 1.0
+      },
+      "metric_n": {
+        "recall@5": 87,
+        "recall@10": 87,
+        "precision@5": 87,
+        "mrr": 87,
+        "ndcg@5": 87,
+        "ndcg@10": 87,
+        "source_page_hit": 87,
+        "company_year_hit": 65,
+        "metric_table_hit": 70,
+        "row_evidence_hit": 69,
+        "company_coverage": 22,
+        "company_full_coverage": 22,
+        "scope_match@1": 39
+      },
+      "by_category": {
+        "historical": {
+          "recall@10": 0.8,
+          "mrr": 0.925,
+          "ndcg@10": 0.7660176994749232,
+          "n": 10
+        },
+        "multi_company": {
+          "recall@10": 0.7592592592592592,
+          "mrr": 0.7857142857142857,
+          "ndcg@10": 0.7507927517282957,
+          "n": 18
+        },
+        "numeric_lookup": {
+          "recall@10": 0.9285714285714286,
+          "mrr": 0.9523809523809524,
+          "ndcg@10": 0.906895442076643,
+          "n": 14
+        },
+        "paraphrase": {
+          "recall@10": 0.90625,
+          "mrr": 0.5104166666666666,
+          "ndcg@10": 0.5700952157545981,
+          "n": 16
+        },
+        "qualitative": {
+          "recall@10": 0.9,
+          "mrr": 0.6888888888888889,
+          "ndcg@10": 0.7034148413126357,
+          "n": 15
+        },
+        "scope": {
+          "recall@10": 1.0,
+          "mrr": 1.0,
+          "ndcg@10": 0.9584978080995372,
+          "n": 8
+        },
+        "terminology": {
+          "recall@10": 1.0,
+          "mrr": 1.0,
+          "ndcg@10": 1.0,
+          "n": 6
+        }
+      },
+      "latency": {
+        "analysis": {
+          "p50_ms": 0.07570849265903234,
+          "p95_ms": 0.09834759403020142,
+          "mean_ms": 0.07759777654428035,
+          "n": 480
+        },
+        "dense": {
+          "p50_ms": 0.1385828945785761,
+          "p95_ms": 0.4244102980010211,
+          "mean_ms": 0.17050851699120054,
+          "n": 480
+        },
+        "bm25": {
+          "p50_ms": 0.1884580124169588,
+          "p95_ms": 0.5407481803558764,
+          "mean_ms": 0.21388114255387336,
+          "n": 480
+        },
+        "fusion": {
+          "p50_ms": 0.028104055672883987,
+          "p95_ms": 0.08942025015130639,
+          "mean_ms": 0.03291603255396088,
+          "n": 480
+        },
+        "rerank": {
+          "p50_ms": 0.000125030055642128,
+          "p95_ms": 0.00016693957149982452,
+          "mean_ms": 0.00013772029584894577,
+          "n": 480
+        },
+        "total": {
+          "p50_ms": 0.4489790881052613,
+          "p95_ms": 1.1697647511027742,
+          "mean_ms": 0.5181615527059572,
+          "n": 480
+        }
+      },
+      "template_macro": {
+        "recall@10": 0.8563218390804598,
+        "mrr": 0.819991789819376,
+        "ndcg@10": 0.7851349707676845
+      },
+      "n_templates": 58,
+      "by_group": {
+        "legacy_templates": {
+          "n": 49,
+          "recall@10": 0.9285714285714286,
+          "mrr": 0.7755102040816326,
+          "ndcg@10": 0.7711012296812211
+        },
+        "handwritten": {
+          "n": 38,
+          "recall@10": 0.8201754385964912,
+          "mrr": 0.8217418546365914,
+          "ndcg@10": 0.7744144999239768
+        }
+      },
+      "status_counts": {
+        "ok": 96
+      },
+      "unanswerable_returning_candidates": "9/9",
+      "counts_mean": {
+        "dense_hits": 25.114583333333332,
+        "bm25_hits": 18.645833333333332,
+        "union_before_dedupe": 43.760416666666664,
+        "after_dedupe": 25.427083333333332,
+        "reranked_pool": 0.0,
+        "below_threshold": 0.0,
+        "returned": 9.510416666666666
+      },
+      "n_answerable": 87,
+      "n_unanswerable_excluded": 9
+    }
+  ],
+  "blocked": [
+    {
+      "id": "D_ce",
+      "name": "Hybrid + RRF + cross-encoder (MiniLM)",
+      "status": "blocked",
+      "reason": "cross-encoder not run: python package 'torch' not installed in this environment"
+    },
+    {
+      "id": "F_ce",
+      "name": "Hybrid + RRF + filters + cross-encoder (MiniLM)",
+      "status": "blocked",
+      "reason": "cross-encoder not run: python package 'torch' not installed in this environment"
+    },
+    {
+      "id": "D_qwen3rr",
+      "name": "Hybrid + Qwen3-Reranker-0.6B",
+      "status": "blocked",
+      "reason": "adapter not implemented and not attempted (torch/transformers not installed; no model downloaded)"
+    },
+    {
+      "id": "real_chroma",
+      "name": "All experiments on the real ChromaDB collection + manual qrels",
+      "status": "blocked",
+      "reason": "collection, metadata schema and query embedder from Member 2 and manual labels from Member 3 are not available; real-mode code path exists but has never been executed against a real collection"
+    },
+    {
+      "id": "A_instr",
+      "name": "Dense with vs without Qwen3 query instruction",
+      "status": "blocked",
+      "reason": "needs Member 2's real Qwen3-Embedding-0.6B query embedder; the hashing stand-in has no instruction mode"
+    }
+  ],
+  "paired_vs_C": [
+    {
+      "experiment": "A",
+      "baseline": "C",
+      "metric": "ndcg@10",
+      "mean_diff": -0.03219989045678023,
+      "ci95": [
+        -0.056545290115485695,
+        -0.007983754912703067
+      ],
+      "n": 87
+    },
+    {
+      "experiment": "A",
+      "baseline": "C",
+      "metric": "mrr",
+      "mean_diff": -0.04657909140667761,
+      "ci95": [
+        -0.0871202791461412,
+        -0.005524083196497016
+      ],
+      "n": 87
+    },
+    {
+      "experiment": "B",
+      "baseline": "C",
+      "metric": "ndcg@10",
+      "mean_diff": 0.023433707539109273,
+      "ci95": [
+        -0.014199467211492386,
+        0.06124438806773228
+      ],
+      "n": 87
+    },
+    {
+      "experiment": "B",
+      "baseline": "C",
+      "metric": "mrr",
+      "mean_diff": 0.061006203247582554,
+      "ci95": [
+        0.0038600392264185367,
+        0.11905867998540409
+      ],
+      "n": 87
+    },
+    {
+      "experiment": "D",
+      "baseline": "C",
+      "metric": "ndcg@10",
+      "mean_diff": 0.148537672341385,
+      "ci95": [
+        0.10095013064012663,
+        0.19539520447426864
+      ],
+      "n": 87
+    },
+    {
+      "experiment": "D",
+      "baseline": "C",
+      "metric": "mrr",
+      "mean_diff": 0.19714468162744025,
+      "ci95": [
+        0.13056832694763731,
+        0.26070653165480745
+      ],
+      "n": 87
+    },
+    {
+      "experiment": "E",
+      "baseline": "C",
+      "metric": "ndcg@10",
+      "mean_diff": 0.15760603706804668,
+      "ci95": [
+        0.10500001595286575,
+        0.2104593571799736
+      ],
+      "n": 87
+    },
+    {
+      "experiment": "E",
+      "baseline": "C",
+      "metric": "mrr",
+      "mean_diff": 0.19901477832512313,
+      "ci95": [
+        0.12323344280240835,
+        0.27498836891078277
+      ],
+      "n": 87
+    },
+    {
+      "experiment": "F",
+      "baseline": "C",
+      "metric": "ndcg@10",
+      "mean_diff": 0.21928576914016928,
+      "ci95": [
+        0.17538894142111222,
+        0.26450294794020707
+      ],
+      "n": 87
+    },
+    {
+      "experiment": "F",
+      "baseline": "C",
+      "metric": "mrr",
+      "mean_diff": 0.28741105637657366,
+      "ci95": [
+        0.23289135194307609,
+        0.3471011220580187
+      ],
+      "n": 87
+    },
+    {
+      "experiment": "B+alias",
+      "baseline": "C",
+      "metric": "ndcg@10",
+      "mean_diff": 0.08045517137103123,
+      "ci95": [
+        0.029268886993284265,
+        0.134199830404088
+      ],
+      "n": 87
+    },
+    {
+      "experiment": "B+alias",
+      "baseline": "C",
+      "metric": "mrr",
+      "mean_diff": 0.057845283707352674,
+      "ci95": [
+        -0.006245210727969357,
+        0.12360905856595512
+      ],
+      "n": 87
+    },
+    {
+      "experiment": "C+alias",
+      "baseline": "C",
+      "metric": "ndcg@10",
+      "mean_diff": 0.0365700339882508,
+      "ci95": [
+        0.010702445935094715,
+        0.06904530884744647
+      ],
+      "n": 87
+    },
+    {
+      "experiment": "C+alias",
+      "baseline": "C",
+      "metric": "mrr",
+      "mean_diff": 0.037712096332785994,
+      "ci95": [
+        0.009168035030103995,
+        0.07017172961138478
+      ],
+      "n": 87
+    },
+    {
+      "experiment": "D+alias",
+      "baseline": "C",
+      "metric": "ndcg@10",
+      "mean_diff": 0.1998497030572363,
+      "ci95": [
+        0.14025855990836542,
+        0.2619754089581977
+      ],
+      "n": 87
+    },
+    {
+      "experiment": "D+alias",
+      "baseline": "C",
+      "metric": "mrr",
+      "mean_diff": 0.25020981572705714,
+      "ci95": [
+        0.17405491698595146,
+        0.3271761539864989
+      ],
+      "n": 87
+    },
+    {
+      "experiment": "E+alias",
+      "baseline": "C",
+      "metric": "ndcg@10",
+      "mean_diff": 0.20799797521399085,
+      "ci95": [
+        0.14944126321799367,
+        0.26653625957032845
+      ],
+      "n": 87
+    },
+    {
+      "experiment": "E+alias",
+      "baseline": "C",
+      "metric": "mrr",
+      "mean_diff": 0.2616584564860427,
+      "ci95": [
+        0.18555008210180626,
+        0.33787903667214014
+      ],
+      "n": 87
+    },
+    {
+      "experiment": "F+alias",
+      "baseline": "C",
+      "metric": "ndcg@10",
+      "mean_diff": 0.2525345268796999,
+      "ci95": [
+        0.20372724250417376,
+        0.3019025076568812
+      ],
+      "n": 87
+    },
+    {
+      "experiment": "F+alias",
+      "baseline": "C",
+      "metric": "mrr",
+      "mean_diff": 0.3036945812807882,
+      "ci95": [
+        0.24431718664477284,
+        0.3641605090311987
+      ],
+      "n": 87
+    },
+    {
+      "experiment": "C@10",
+      "baseline": "C",
+      "metric": "ndcg@10",
+      "mean_diff": 0.0011538518964077373,
+      "ci95": [
+        -0.010042860488284169,
+        0.012498469350075647
+      ],
+      "n": 87
+    },
+    {
+      "experiment": "C@10",
+      "baseline": "C",
+      "metric": "mrr",
+      "mean_diff": 0.0032156540777230434,
+      "ci95": [
+        -0.00020525451559934277,
+        0.008073344280240832
+      ],
+      "n": 87
+    },
+    {
+      "experiment": "E@10",
+      "baseline": "C",
+      "metric": "ndcg@10",
+      "mean_diff": 0.16356025027760906,
+      "ci95": [
+        0.11332037114164889,
+        0.21514871980896258
+      ],
+      "n": 87
+    },
+    {
+      "experiment": "E@10",
+      "baseline": "C",
+      "metric": "mrr",
+      "mean_diff": 0.19901477832512313,
+      "ci95": [
+        0.12323344280240835,
+        0.27498836891078277
+      ],
+      "n": 87
+    },
+    {
+      "experiment": "C@30",
+      "baseline": "C",
+      "metric": "ndcg@10",
+      "mean_diff": -0.0005769822559277795,
+      "ci95": [
+        -0.0017309467677833383,
+        0.0
+      ],
+      "n": 87
+    },
+    {
+      "experiment": "C@30",
+      "baseline": "C",
+      "metric": "mrr",
+      "mean_diff": 0.0019157088122605365,
+      "ci95": [
+        0.0,
+        0.005747126436781609
+      ],
+      "n": 87
+    },
+    {
+      "experiment": "E@30",
+      "baseline": "C",
+      "metric": "ndcg@10",
+      "mean_diff": 0.15760603706804668,
+      "ci95": [
+        0.10500001595286575,
+        0.2104593571799736
+      ],
+      "n": 87
+    },
+    {
+      "experiment": "E@30",
+      "baseline": "C",
+      "metric": "mrr",
+      "mean_diff": 0.19901477832512313,
+      "ci95": [
+        0.12323344280240835,
+        0.27498836891078277
+      ],
+      "n": 87
+    }
+  ]
+}

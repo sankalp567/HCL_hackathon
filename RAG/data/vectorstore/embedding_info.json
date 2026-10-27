@@ -1,0 +1,11 @@
+{
+  "model": "Qwen/Qwen3-Embedding-0.6B",
+  "dimension": 1024,
+  "query_prompt": "query",
+  "normalized": true,
+  "distance": "cosine",
+  "collection": "annual_reports",
+  "chunks": 6172,
+  "embedded_field": "embed_text",
+  "seconds": 251.4
+}
