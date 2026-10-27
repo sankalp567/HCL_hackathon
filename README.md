@@ -50,6 +50,10 @@ Full table: [`eval/results.md`](eval/results.md). We chose the model by measurem
 | Choosing metric and chart for 12 unusual phrasings | 11/12 | 12/12 |
 | Question check on 16 tricky questions (other companies, parts, computed values) | 15/16 | 16/16 |
 
+**Team test set** (`eval/test_queries.csv`, 42 harder questions with expected value and page: EPS, dividends, growth, "which company", computed values): **28/42** right (`python eval/run_test_queries.py`, results in [`eval/test_queries_results.md`](eval/test_queries_results.md)). The misses are documented, not hidden: five headcount questions expect the headline headcount (TCS 5,84,519) while we extract the BRSR total including non-permanent staff (6,17,437); HCLTech's ₹60 dividend (p. 8) is not retrieved; TCS's 13.7% attrition is printed as "13." in the PDF's text layer; the report prints two HCLTech profit figures (16,642 and 16,652); and we never compute values the reports do not print (a revenue gap, a combined headcount).
+
+**Vector search vs keyword search** (`eval/compare_retrieval.py`): the `RAG/` ChromaDB chunks, re-embedded with the same model (Qwen3-Embedding-0.6B), against our FTS5/BM25 retrieval, on the test set's 74 (question, company) pairs. Expected page retrieved: vectors 25/74, keywords 34/74; expected value retrieved: 23/74 vs 33/74. Vectors found 2 values keywords missed, keywords 12 that vectors missed: the two complement each other, so the planned next step is hybrid retrieval (BM25 + vectors, fused, then re-ranked), which `MY part/` implements.
+
 ## Run it
 
 Requirements: Python 3.12 and [uv](https://docs.astral.sh/uv/). A GPU is needed only to re-extract the PDFs or to host the model.
