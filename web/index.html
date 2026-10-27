@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>IT Annual Reports Q&amp;A</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <h1>IT Annual Reports FY2025-26 · TCS · Infosys · HCLTech</h1>
+    <p>Answers come only from the three annual reports, with the PDF page behind every claim.</p>
+  </header>
+
+  <div class="layout">
+    <main>
+      <form id="ask-form" class="ask" autocomplete="off">
+        <label for="question" class="visually-hidden">Your question</label>
+        <input id="question" name="question" type="text" maxlength="500"
+               placeholder="Ask about the three annual reports…" required>
+        <button id="ask-button" type="submit">Ask</button>
+      </form>
+
+      <div class="examples" aria-label="Example questions">
+        <button type="button" class="chip">What was Infosys's voluntary attrition in FY2025-26?</button>
+        <button type="button" class="chip">Compare the headcount of TCS, Infosys and HCLTech.</button>
+        <button type="button" class="chip">How does HCLTech describe its GenAI investments?</button>
+        <button type="button" class="chip">What was TCS's revenue in FY2029-30?</button>
+        <button type="button" class="chip">Should I buy Infosys shares?</button>
+      </div>
+
+      <section id="result" class="result" hidden>
+        <p id="status" class="status"></p>
+        <div id="notice" class="notice" hidden></div>
+        <div id="answer" class="answer" aria-live="polite"></div>
+        <ol id="citations" class="citations" aria-label="Citations"></ol>
+        <p id="footer" class="footer"></p>
+      </section>
+    </main>
+
+    <aside id="panel" class="panel" hidden aria-label="Cited page">
+      <div class="panel-head">
+        <h2 id="panel-title">Cited page</h2>
+        <button id="panel-close" type="button" class="close" aria-label="Close the page view">×</button>
+      </div>
+      <p id="panel-quote" class="quote"></p>
+      <a id="panel-link" class="open-pdf" target="_blank" rel="noopener">Open PDF at this page</a>
+      <img id="panel-image" alt="The cited page of the report">
+    </aside>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
