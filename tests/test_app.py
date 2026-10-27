@@ -173,6 +173,20 @@ def test_vllm_backend_streams_chunks(settings):
     assert done_of(events)["status"] == "answered" and done_of(events)["backend"] == "vllm"
 
 
+def test_vllm_fails_over_to_the_safety_net_server():
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.host == "sustain":
+            raise httpx.ConnectError("refused", request=request)
+        chunk = {"choices": [{"delta": {"content": "Answered by the backup [1]."}}]}
+        sse = f"data: {json.dumps(chunk)}\n\ndata: [DONE]\n\n"
+        return httpx.Response(200, headers={"content-type": "text/event-stream"}, content=sse.encode())
+
+    llm = OpenAICompatLLM("http://sustain:8002/v1, http://ramanujan:8001/v1", "qwen3-4b",
+                          transport=httpx.MockTransport(handler))
+    assert "".join(llm.stream("system", "user")) == "Answered by the backup [1]."
+    assert llm.last_url == "http://ramanujan:8001/v1"
+
+
 def test_vllm_unreachable_falls_back_to_extractive(settings):
     def refuse(request: httpx.Request) -> httpx.Response:
         raise httpx.ConnectError("connection refused", request=request)

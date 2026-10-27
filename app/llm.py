@@ -139,18 +139,39 @@ class OpenAICompatLLM:
 
     def __init__(self, base_url: str, model: str, api_key: str | None = None, timeout_s: float = 60.0,
                  transport: httpx.BaseTransport | None = None):
-        self.base_url, self.model, self.api_key = base_url.rstrip("/"), model, api_key
+        # one URL, or a comma-separated list tried in order (primary sustain, then the ramanujan safety net)
+        self.base_urls = [u.strip().rstrip("/") for u in base_url.split(",") if u.strip()]
+        self.base_url = self.base_urls[0]
+        self.model, self.api_key = model, api_key
         self.timeout, self.transport = timeout_s, transport
+        self.last_url: str | None = None  # the server that answered last
 
     def stream(self, system: str, user: str) -> Iterator[str]:
+        """Try each server in order; move on only if one fails before sending any text."""
+        errors = []
+        for url in self.base_urls:
+            started = False
+            try:
+                for piece in self._stream_from(url, system, user):
+                    started = True
+                    yield piece
+                self.last_url = url
+                return
+            except LLMUnavailable as exc:
+                if started:
+                    raise
+                errors.append(str(exc))
+        raise LLMUnavailable("; ".join(errors))
+
+    def _stream_from(self, base_url: str, system: str, user: str) -> Iterator[str]:
         headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
         body = {"model": self.model, "stream": True, "temperature": 0, "max_tokens": MAX_NEW_TOKENS,
                 "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
         try:
             with httpx.Client(timeout=self.timeout, transport=self.transport) as client:
-                with client.stream("POST", f"{self.base_url}/chat/completions", json=body, headers=headers) as resp:
+                with client.stream("POST", f"{base_url}/chat/completions", json=body, headers=headers) as resp:
                     if resp.status_code != 200:
-                        raise LLMUnavailable(f"{self.base_url} answered HTTP {resp.status_code}")
+                        raise LLMUnavailable(f"{base_url} answered HTTP {resp.status_code}")
                     for line in resp.iter_lines():
                         if not line.startswith("data:"):
                             continue
@@ -162,7 +183,7 @@ class OpenAICompatLLM:
                         if content:
                             yield content
         except httpx.HTTPError as exc:  # connection refused, timeout, broken stream
-            raise LLMUnavailable(f"{self.base_url} unreachable: {exc!r}") from exc
+            raise LLMUnavailable(f"{base_url} unreachable: {exc!r}") from exc
 
 
 _transformers_cache: dict[tuple[str, str], TransformersLLM] = {}
