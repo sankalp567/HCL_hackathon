@@ -1,6 +1,6 @@
 # Evaluation results
 
-Backend: `http://127.0.0.1:8765` · questions: 43 · run at 2026-10-27 15:12
+Backend: `http://127.0.0.1:8765` · questions: 43 · run at 2026-10-27 15:41
 
 | Score | Result |
 |---|---|
@@ -8,7 +8,7 @@ Backend: `http://127.0.0.1:8765` · questions: 43 · run at 2026-10-27 15:12
 | Numeric answers with the expected numbers | 25/25 (100%) |
 | Descriptive answers with the expected term | 4/4 (100%) |
 | Numeric claims whose numbers are on a cited PDF page | 41/41 (100%) |
-| Latency p50 / p95 | 0.0 s / 4.1 s |
+| Latency p50 / p95 | 0.0 s / 4.2 s |
 
 Citations are checked against each page's own text layer, independent of facts.db.
 
@@ -32,15 +32,15 @@ Citations are checked against each page's own text layer, independent of facts.d
 | C02 | compare | Compare the operating margins of the three companies. | answered ✓ | ✓ | – | 3/3 | facts | 0.0 |
 | C03 | compare | Compare the headcount of TCS, Infosys and HCLTech. | answered ✓ | ✓ | – | 3/3 | facts | 0.0 |
 | C04 | compare | Which company had the highest net profit in FY2025-26? | answered ✓ | ✓ | – | 3/3 | vllm | 2.5 |
-| D01 | descriptive | How does HCLTech describe its GenAI investments? | answered ✓ | – | ✓ | 2/2 | vllm | 4.1 |
-| D02 | descriptive | What does TCS say about its AI strategy? | answered ✓ | – | ✓ | 0/0 | vllm | 4.1 |
-| D03 | descriptive | How does Infosys describe its large deal wins in FY2025-26? | answered ✓ | – | ✓ | 2/2 | vllm | 4.1 |
-| D04 | descriptive | What key risks does Infosys highlight? | answered ✓ | – | ✓ | 0/0 | vllm | 5.0 |
+| D01 | descriptive | How does HCLTech describe its GenAI investments? | answered ✓ | – | ✓ | 2/2 | vllm | 4.2 |
+| D02 | descriptive | What does TCS say about its AI strategy? | answered ✓ | – | ✓ | 0/0 | vllm | 4.2 |
+| D03 | descriptive | How does Infosys describe its large deal wins in FY2025-26? | answered ✓ | – | ✓ | 2/2 | vllm | 4.3 |
+| D04 | descriptive | What key risks does Infosys highlight? | answered ✓ | – | ✓ | 0/0 | vllm | 5.1 |
 | D05 | descriptive | What dividend per share did Infosys declare for FY2025-26? | answered ✓ | ✓ | – | 3/3 | vllm | 3.1 |
 | D06 | descriptive | How many US$50 million+ clients did Infosys have in FY2025-26? | answered ✓ | ✓ | – | 2/2 | vllm | 1.7 |
-| D07 | descriptive | What was the large deal TCV of Infosys in FY2025-26? | answered ✓ | ✓ | – | 1/1 | vllm | 1.7 |
+| D07 | descriptive | What was the large deal TCV of Infosys in FY2025-26? | answered ✓ | ✓ | – | 1/1 | vllm | 1.8 |
 | U01 | unanswerable | What was TCS's revenue in FY2029-30? | not_found ✓ | – | – | 0/0 | vllm | 0.2 |
-| U02 | unanswerable | What is the favourite cricket team of the TCS CEO? | not_found ✓ | – | – | 0/0 | vllm | 0.2 |
+| U02 | unanswerable | What is the favourite cricket team of the TCS CEO? | not_found ✓ | – | – | 0/0 | vllm | 0.3 |
 | U03 | unanswerable | What was Wipro's revenue in FY2025-26? | not_found ✓ | – | – | 0/0 | vllm | 0.0 |
 | U04 | unanswerable | How many employees does HCLTech plan to hire in FY2030? | not_found ✓ | – | – | 0/0 | vllm | 0.0 |
 | O01 | out_of_scope | Should I buy Infosys shares? | out_of_scope ✓ | – | – | 0/0 | vllm | 0.0 |
@@ -48,12 +48,12 @@ Citations are checked against each page's own text layer, independent of facts.d
 | A01 | adversarial | what was apples company revenue | not_found ✓ | – | – | 0/0 | vllm | 0.0 |
 | A02 | adversarial | what is microsofts revenue in 2025 | not_found ✓ | – | – | 0/0 | vllm | 0.0 |
 | A03 | adversarial | What was the net profit of Tata Motors in FY2025-26? | not_found ✓ | – | – | 0/0 | vllm | 0.0 |
-| A04 | adversarial | what is tcs revenue was there in year 2023? | not_found ✓ | – | – | 0/0 | vllm | 1.6 |
+| A04 | adversarial | what is tcs revenue was there in year 2023? | not_found ✓ | – | – | 0/0 | vllm | 1.7 |
 | A05 | adversarial | HCLTech net profit in 2019 | not_found ✓ | – | – | 0/0 | vllm | 0.0 |
 | A06 | adversarial | How many employees will TCS have in 2030? | not_found ✓ | – | – | 0/0 | vllm | 0.2 |
 | A07 | adversarial | Should I short TCS stock? | out_of_scope ✓ | – | – | 0/0 | vllm | 0.0 |
 | A08 | adversarial | Is Infosys a good investment right now? | out_of_scope ✓ | – | – | 0/0 | vllm | 0.0 |
 | A09 | adversarial | Infosys revenue in 2023 | answered ✓ | ✓ | – | 1/1 | facts | 0.0 |
 | A10 | adversarial | Revenue growth of HCLTech in FY26 | answered ✓ | ✓ | – | 2/2 | vllm | 1.9 |
-| A11 | adversarial | staff numbers trend for infy | answered ✓ | ✓ | – | 1/1 | facts | 0.0 |
+| A11 | adversarial | staff numbers trend for infy | answered ✓ | ✓ | – | 1/1 | facts | 0.1 |
 | A12 | adversarial | Infosys and Apple attrition in FY2025-26 | answered ✓ | ✓ | – | 1/1 | facts | 0.0 |
