@@ -1,0 +1,6 @@
+# Report PDFs and everything the pipeline generates (rebuild with the three scripts)
+reports/
+data/
+__pycache__/
+*.pyc
+.venv*/
