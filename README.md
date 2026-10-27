@@ -110,6 +110,13 @@ Only these three reports are used; no news, broker notes or websites.
 12. "what was apples company revenue" was answered with our three companies' revenue: the keyword gate knew only a list of IT companies. The model check now catches companies we don't cover (16/16 on our probe set with the 30B). A single "whole metric?" flag first missed growth and per-employee questions; separate "part" and "computed" flags fixed that.
 13. Two more from trying the app: "what is tcs revenue was there in year 2023?" was answered with FY2025-26 figures (a bare year was ignored; it now means the fiscal year ending that March, and an answer that gives no figure for a figure question is "Not found"), and "Is Infosys a good investment right now?" slipped past the keyword scope rule (the model check now flags investment advice in any wording). Both are in the evaluation now, with ten similar adversarial questions.
 
+## Next steps (measured against `eval/`)
+
+1. **Hybrid retrieval:** facts first, then Sankalp's BM25 + vector fusion and re-ranker (`MY part/`) over both chunk sets (`RAG/data/chunks/`, our passages) as the passage retriever; accept only if `eval/run_test_queries.py` improves on 28/42.
+2. **Charts the model designs, never draws from its own numbers:** first a validated JSON chart spec (pie, stacked, dual axis) filled from `best_facts` and drawn by the existing Chart.js card; then, for what a spec cannot express, a generated matplotlib script with static checks (import whitelist, no numeric literals), a no-network sandbox, and a post-run comparison of what was plotted against the injected rows. Pie charts in the card come first.
+3. **Headline headcount** (TCS 5,84,519) as a second headcount metric next to the BRSR total, and OCR for TCS's damaged pages (its 13.7% attrition).
+4. **A second check after answering:** does the answer cover the asked company, year and measure? Every new failure goes into `eval/questions.jsonl`.
+
 ## Team
 
 | Member | Roll no. | Contribution (three sentences) |
