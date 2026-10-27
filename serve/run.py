@@ -95,10 +95,11 @@ def ensure_venv(args: argparse.Namespace) -> None:
         uv = shutil.which("uv") or str(Path.home() / ".local" / "bin" / "uv")
         if not Path(uv).exists():
             sys.exit("[run.py] uv not found: put the uv binary in ~/.local/bin/uv, then run again")
-        print("[run.py] installing vLLM {} into .venv (first run only, a few minutes)".format(VLLM_VERSION), flush=True)
-        if not VENV_PY.exists():
-            subprocess.run([uv, "venv", "--python", "3.12", str(VENV)], check=True)
-        subprocess.run([uv, "pip", "install", "--python", str(VENV_PY), "vllm=={}".format(VLLM_VERSION)], check=True)
+        print("[run.py] installing vLLM {} into {} (first run only, a few minutes)".format(VLLM_VERSION, args.venv),
+              flush=True)
+        if not venv_py.exists():
+            subprocess.run([uv, "venv", "--python", "3.12", str(args.venv)], check=True)
+        subprocess.run([uv, "pip", "install", "--python", str(venv_py), "vllm=={}".format(VLLM_VERSION)], check=True)
     os.chdir(str(HERE))
     # Started as plain `python`, the interpreter finds its venv by looking `python` up on PATH, so put the venv first.
     env = dict(os.environ, RUN_PY_REEXEC="1", PATH="{}:{}".format(venv_py.parent, os.environ.get("PATH", "")))

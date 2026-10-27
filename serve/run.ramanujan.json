@@ -1,0 +1,8 @@
+{
+  "engine": "vllm",
+  "venv": "/home/balbir.prasad/hcl_llm/.venv-vllm011",
+  "gpu": "3",
+  "port": 8001,
+  "gpu_memory_utilization": 0.2,
+  "max_model_len": 8192
+}
