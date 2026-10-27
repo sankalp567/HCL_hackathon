@@ -34,6 +34,7 @@ const form = document.getElementById("ask-form");
 const input = document.getElementById("question");
 const button = document.getElementById("ask-button");
 let busy = false;
+const history = [];   // every question asked in this chat, oldest first
 
 export function initChat() {
   document.getElementById("suggestions").replaceChildren(
@@ -64,6 +65,7 @@ export function updateScopeHint() {
 export async function ask(rawQuestion) {
   const question = rawQuestion.trim();
   if (!question || busy) return;
+  history.push(question);
   busy = true;
   button.disabled = true;
   input.value = "";
@@ -78,7 +80,7 @@ export async function ask(rawQuestion) {
     await askStream(question, allCompaniesSelected() ? null : state.companies, (event, data) => {
       answer.handle(event, data);
       scrollDown();
-    });
+    }, history.slice(-4, -1));   // the three questions before this one
     if (!answer.finished) answer.fail("The connection closed before the answer finished.");
   } catch (err) {
     answer.fail(err.message);
@@ -289,9 +291,12 @@ class Answer {
   }
 
   addMetricCard() {
-    const { metric, companies, fy } = this.understood;
+    const { metric, companies, fy, chart } = this.understood;
+    if (chart === "pie") {
+      this.extra.append(h("p", { class: "result-hint" }, "Pie charts are not available yet; shown as bars, one per company."));
+    }
     const panel = metricPanel({
-      metric, companies, year: "all", layout: "tabs", highlightFy: fy,
+      metric, companies, year: "all", layout: "tabs", highlightFy: fy, chartType: chart,
       onPick: (facts, m) => {
         // Chart and table numbers join this answer's evidence list, next to the cited sources.
         const refs = facts.map((f) => factRef(f, m));

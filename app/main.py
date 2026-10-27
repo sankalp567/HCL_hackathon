@@ -41,6 +41,7 @@ class AskRequest(BaseModel):
     question: str = Field(min_length=1, max_length=500)
     companies: list[str] | None = None   # default scope when the question names no company (UI toggle)
     use_cache: bool = True               # False: answer afresh (the evaluation measures the pipeline)
+    history: list[str] | None = None     # earlier questions of this chat, oldest first (follow-ups)
 
 
 def with_bbox(row) -> dict:
@@ -101,7 +102,7 @@ def create_app(settings: Settings | None = None, llm: LLM | None = None) -> Fast
     @app.post("/api/ask")
     def ask(req: AskRequest) -> StreamingResponse:
         events = (sse(event, data) for event, data in answer_events(req.question, settings, llm, req.companies,
-                                                                          req.use_cache))
+                                                                          req.use_cache, req.history))
         return StreamingResponse(events, media_type="text/event-stream",
                                  headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 

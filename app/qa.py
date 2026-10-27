@@ -47,6 +47,35 @@ SENTENCE_BREAK = re.compile(r"((?<=[.!?])\s+|\n+)")
 EXPLAIN = re.compile(r"\b(why|explain|describe|reasons?|drivers?|factors?|impact|strategy|what (drove|caused|led))\b"
                      r"|\bhow\b(?!\s+(many|much))", re.I)   # 'how many employees' is still a lookup
 HOW_MANY = re.compile(r"\bhow (many|much)\b", re.I)
+FOLLOW_UP = re.compile(r"^\s*(and|what about|how about|same for|also|now|then|compare (that|it)|for)\b", re.I)
+CHART_WORD = re.compile(r"\b(pie|bar|line)\s*(?:charts?|graphs?|plots?|diagrams?)\b|\b(pie)\b", re.I)
+
+
+def follow_up(question: str, history: list[str] | None) -> dict | None:
+    """'And for Infosys?' after 'TCS revenue in FY2025-26' means Infosys revenue in FY2025-26: a short follow-up
+    takes the company, metric and year it does not name from the most recent earlier question that has them."""
+    if not history:
+        return None
+    asked = understand(question)
+    cue = FOLLOW_UP.search(question) or (len(question.split()) <= 6 and (asked.named or asked.fy) and not asked.metric)
+    if not cue:
+        return None
+    carry: dict = {}
+    for earlier in reversed(history[-3:]):
+        before = understand(earlier)
+        if not asked.named and "companies" not in carry and before.named:
+            carry["companies"] = before.companies
+        if not asked.metric and "metric" not in carry and before.metric:
+            carry["metric"] = before.metric
+        if not asked.fy and "fy" not in carry and before.fy:
+            carry["fy"] = before.fy
+    return carry or None
+
+
+def chart_type(question: str) -> str | None:
+    """The chart the question asks for by name: 'pie chart of revenue', 'as a pie', 'bar graph'."""
+    m = CHART_WORD.search(question)
+    return (m.group(1) or m.group(2)).lower() if m else None
 UNIT_ASKED = re.compile(r"\(in\s*(?:₹|rs\.?|inr|%|us\$|usd|crore)", re.I)   # '(in ₹ crore)', '(in %)'
 # a metric qualified like this is not the template's consolidated, reported, full-year value
 QUALIFIED = re.compile(r"\b(adjusted|standalone|constant currency|segment|quarter|q[1-4])\b", re.I)
@@ -207,8 +236,11 @@ def verify_answer(answer: str, sources: list[dict]) -> tuple[str, list[dict]]:
     return "".join(kept).strip(), report
 
 
-def render_user_message(question: str, sources: list[dict]) -> str:
-    lines = [f"Question: {question}", "", "Sources:"]
+def render_user_message(question: str, sources: list[dict], history: list[str] | None = None) -> str:
+    lines = [f"Question: {question}"]
+    if history:   # a follow-up ('why?') is read with the earlier questions of the chat
+        lines.append("Earlier questions in this chat: " + " | ".join(history[-3:]))
+    lines += ["", "Sources:"]
     for s in sources:
         lines.append(f"[{s['n']}] ({s['company']} · {s['report']} · PDF p. {s['page']}) {s['text']}")
     return "\n".join(lines)
@@ -317,13 +349,14 @@ def _worth_storing(events: list[tuple[str, dict]], llm: LLM) -> bool:
 
 
 def answer_events(question: str, settings: Settings, llm: LLM, companies: list[str] | None = None,
-                  use_cache: bool = True) -> Iterator[tuple[str, dict]]:
+                  use_cache: bool = True, history: list[str] | None = None) -> Iterator[tuple[str, dict]]:
     """A model answer given before to the same question (same company filter, facts.db, models and prompt) is
     replayed from the cache; anything else is answered now, and stored when it was worth a model call."""
     started = time.monotonic()
     question = " ".join(question.split())
     cache = cache_for(settings)
-    key = ("answer", normalise(question), sorted(companies or []), _db_version(settings.facts_db),
+    carry = follow_up(question, history)
+    key = ("answer", normalise(question), sorted(companies or []), carry, _db_version(settings.facts_db),
            _model_id(llm), SYSTEM_PROMPT)
     stored = cache.get(key) if use_cache else None
     if stored:
@@ -338,7 +371,7 @@ def answer_events(question: str, settings: Settings, llm: LLM, companies: list[s
             yield event, data
         return
     events: list[tuple[str, dict]] = []
-    for event, data in _answer_events(question, settings, llm, companies, cache):
+    for event, data in _answer_events(question, settings, llm, companies, cache, carry, history):
         events.append((event, data))
         yield event, data
     if use_cache and _worth_storing(events, llm):
@@ -348,8 +381,8 @@ def answer_events(question: str, settings: Settings, llm: LLM, companies: list[s
         cache.put(key, packed)
 
 
-def _answer_events(question: str, settings: Settings, llm: LLM, companies: list[str] | None,
-                   cache: Cache) -> Iterator[tuple[str, dict]]:
+def _answer_events(question: str, settings: Settings, llm: LLM, companies: list[str] | None, cache: Cache,
+                   carry: dict | None = None, history: list[str] | None = None) -> Iterator[tuple[str, dict]]:
     started = time.monotonic()
     query_id = uuid.uuid4().hex[:12]
     record: dict = {"query_id": query_id, "ts": datetime.now(timezone.utc).isoformat(), "question": question}
@@ -378,6 +411,7 @@ def _answer_events(question: str, settings: Settings, llm: LLM, companies: list[
 
         check = check_question(question, llm, cache)
         record["check"] = check
+        record["follow_up"] = carry
         if check and check["advice"]:   # wording the scope rule misses ('is it a good investment', 'short it')
             yield "meta", {"query_id": query_id, "understood": understand(question).as_dict(), "sources": []}
             yield done("out_of_scope", "scope", OUT_OF_SCOPE_MESSAGE)
@@ -392,11 +426,17 @@ def _answer_events(question: str, settings: Settings, llm: LLM, companies: list[
                 return
             yield "notice", {"message": f"{names} not covered; answering for the companies that are."}
         plan = check["plan"] if check and not understand(question).metric and WANTS_DATA.search(question) else None
+        carry = carry or {}
+        chart = chart_type(question) or ((check or {}).get("plan") or {}).get("chart")
+        chart = chart if chart in ("pie", "bar", "line") else None
         with closing(connect(settings.facts_db)) as conn:
-            understood, sources = build_sources(conn, question, companies, metric=plan["metric"] if plan else None)
+            understood, sources = build_sources(conn, question, carry.get("companies") or companies,
+                                                metric=carry.get("metric") or (plan["metric"] if plan else None),
+                                                fy=carry.get("fy"))
         record |= {"understood": understood.as_dict(), "plan": plan,
                    "sources": [{k: s[k] for k in ("n", "kind", "doc_id", "page", "score")} for s in sources]}
-        yield "meta", {"query_id": query_id, "understood": understood.as_dict() | ({"plan": plan} if plan else {}),
+        yield "meta", {"query_id": query_id,
+                       "understood": understood.as_dict() | ({"plan": plan} if plan else {}) | ({"chart": chart} if chart else {}),
                        "sources": [{k: s[k] for k in ("n", "company", "report", "pdf", "doc_id", "page", "kind", "score")}
                                    for s in sources]}
 
@@ -421,7 +461,7 @@ def _answer_events(question: str, settings: Settings, llm: LLM, companies: list[
             for line in templated.splitlines(keepends=True):
                 yield "token", {"t": line}
         else:
-            user = render_user_message(question, sources)
+            user = render_user_message(question, sources, history)
             try:
                 yield from _stream_tokens(llm, user, out)
             except Exception as exc:

@@ -58,9 +58,10 @@ export const pdfUrl = (pdf, page) => `/reports/${encodeURIComponent(pdf)}#page=$
  * POST /api/ask and call onEvent(event, data) for each server-sent event as it arrives:
  * meta, token, citations, notice, error, done (see app/main.py for the contract).
  */
-export async function askStream(question, companies, onEvent) {
+export async function askStream(question, companies, onEvent, history = []) {
   const body = { question };
   if (companies) body.companies = companies;
+  if (history.length) body.history = history;   // earlier questions of this chat, for follow-ups
   let res;
   try {
     res = await fetch("/api/ask", {

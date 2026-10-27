@@ -323,11 +323,13 @@ let panelCount = 0;
  * layout 'tabs' (inside an answer) shows one of the three at a time; 'stacked' (Compare view) shows all three.
  * onPick(facts, metric) is called when a number, point or source chip is selected.
  */
-export function metricPanel({ metric, companies, year = "all", layout = "stacked", onPick, onMetricChange, highlightFy = null }) {
+export function metricPanel({ metric, companies, year = "all", layout = "stacked", onPick, onMetricChange, highlightFy = null,
+                              chartType = null }) {
   const id = `mp${++panelCount}`;
   let current = metric;
   let type = "line";       // what is drawn: 'line' | 'bar'
-  let chosenType = null;   // set once the user picks a chart type
+  // the type the question asked for ('bar graph of headcount'), then whatever the user picks; a pie is drawn as bars
+  let chosenType = chartType === "bar" || chartType === "line" ? chartType : chartType === "pie" ? "bar" : null;
   let chart = null;
   let shown = { grid: null, years: [], unit: "" };   // what the chart and table currently show
   let loads = 0;   // only the latest metric request may render

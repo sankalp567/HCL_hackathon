@@ -77,8 +77,8 @@ def events_of(response) -> list[tuple[str, dict]]:
     return out
 
 
-def ask(client, question):
-    response = client.post("/api/ask", json={"question": question})
+def ask(client, question, **extra):
+    response = client.post("/api/ask", json={"question": question, **extra})
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/event-stream")
     return events_of(response)
@@ -300,6 +300,27 @@ def test_a_unit_asked_for_needs_a_figure_in_the_answer(settings):
     llm = CountingLLM(["TCS grew on the back of large deals [1]."])
     done = done_of(ask(TestClient(create_app(settings, llm=llm)), "What was TCS's growth on large deals (in %)?"))
     assert (done["status"], done["gate"]) == ("not_found", "no_figure")
+
+
+def test_a_follow_up_takes_metric_and_year_from_the_earlier_question(settings):
+    client = TestClient(create_app(settings, llm=FakeLLM(["this must not be used"])))
+    events = ask(client, "What about Infosys?", history=["What was the attrition rate in FY2025-26?"])
+    understood = events[0][1]["understood"]
+    assert (understood["metric"], understood["fy"], understood["companies"]) == ("attrition", "FY2025-26", ["Infosys"])
+    assert next(d for e, d in events if e == "final")["answer"] == "Infosys attrition, FY2025-26: 14.1% [1]."
+    assert done_of(events)["backend"] == "facts"
+
+
+def test_an_unrelated_question_takes_nothing_from_the_chat(settings):
+    done = done_of(ask(TestClient(create_app(settings)), "What colour is the moon?",
+                       history=["What was the attrition rate in FY2025-26?"]))
+    assert (done["status"], done["gate"]) == ("not_found", "evidence")
+
+
+@pytest.mark.parametrize("question, chart", [("Give me a pie chart of revenue", "pie"), ("bar graph of headcount", "bar"),
+                                             ("revenue trend as a line plot", "line"), ("Compare revenue", None)])
+def test_the_asked_chart_type_reaches_the_ui(settings, question, chart):
+    assert ask(TestClient(create_app(settings)), question)[0][1]["understood"].get("chart") == chart
 
 
 @pytest.mark.parametrize("flag", ["part", "computed"])
