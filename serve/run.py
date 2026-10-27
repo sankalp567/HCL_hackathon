@@ -8,9 +8,10 @@
 Two engines, chosen in run.json: "vllm" (faster; installs itself into .venv, so it needs internet once) or
 "transformers" (hf_server.py next to this file; uses an existing venv with torch + transformers, works offline).
 
-To other users of the server the process shows only as `python run.py`: settings come from run.json rather than
-the command line, the script re-launches itself under that name inside its venv, and the engine runs inside this
-same process (no engine subprocess, no process renaming), so `ps` and `nvidia-smi` list one `python run.py`.
+To other users of the server every process shows only as `python run.py`: settings come from run.json rather than
+the command line, and the script re-launches itself under that name inside its venv. vLLM's server starts its
+engine in a child process and names it "VLLM::EngineCore"; that child re-imports this file before loading vLLM, so
+the code at the top of this file renames it `python run.py` too and blocks vLLM's own renaming.
 
 run.json (all keys optional), e.g. on sustain:
     {"engine": "transformers", "venv": "/home/balbir.prasad/work/hcl_extract/.venv",
@@ -35,6 +36,20 @@ import time
 import types
 import urllib.request
 from pathlib import Path
+
+def show_as_run_py() -> None:
+    """Name this process `python run.py` and stop vLLM renaming it (runs in the server and in its engine child,
+    which imports this file first; does nothing under the system Python, which has no setproctitle)."""
+    try:
+        import setproctitle
+    except ImportError:
+        return
+    setproctitle.setproctitle("python run.py")
+    sys.modules["setproctitle"] = types.SimpleNamespace(setproctitle=lambda *a, **k: None,
+                                                        getproctitle=lambda: "python run.py")
+
+
+show_as_run_py()
 
 HERE = Path(__file__).resolve().parent
 VENV = HERE / ".venv"
@@ -76,6 +91,24 @@ def settings() -> argparse.Namespace:
     return args
 
 
+TITLE_HOOK = '''# Written by run.py: every Python process started from this venv (vLLM's engine and helper processes too)
+# shows as `python run.py` to other users of the server.
+try:
+    import setproctitle
+    setproctitle.setproctitle("python run.py")
+except Exception:
+    pass
+'''
+
+
+def install_title_hook(venv: Path) -> None:
+    """Put sitecustomize.py into the dedicated vLLM venv (never into a shared one)."""
+    for site_packages in venv.glob("lib/python3*/site-packages"):
+        hook = site_packages / "sitecustomize.py"
+        if not hook.exists() or hook.read_text() != TITLE_HOOK:
+            hook.write_text(TITLE_HOOK)
+
+
 def ensure_venv(args: argparse.Namespace) -> None:
     """Make sure the engine is installed (vLLM is installed into .venv if needed, which needs internet), then
     re-run this script inside that venv as `python run.py`."""
@@ -102,6 +135,8 @@ def ensure_venv(args: argparse.Namespace) -> None:
             subprocess.run([uv, "venv", "--python", "3.12", str(args.venv)], check=True)
         subprocess.run([uv, "pip", "install", "--python", str(venv_py), "vllm=={}".format(VLLM_VERSION),
                         "transformers<5"], check=True)
+    if args.engine == "vllm":
+        install_title_hook(args.venv)
     os.chdir(str(HERE))
     # Started as plain `python`, the interpreter finds its venv by looking `python` up on PATH, so put the venv first.
     env = dict(os.environ, RUN_PY_REEXEC="1", PATH="{}:{}".format(venv_py.parent, os.environ.get("PATH", "")))
@@ -149,12 +184,8 @@ def serve(args: argparse.Namespace) -> int:
     if args.host != "127.0.0.1" and not args.api_key:
         sys.exit("[run.py] refusing to listen on {} without --api-key: the server is shared".format(args.host))
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu           # before torch initialises CUDA
-    os.environ["VLLM_ENABLE_V1_MULTIPROCESSING"] = "0"       # engine in this process, not a separate one
     if Path(args.model).is_dir():
         os.environ["HF_HUB_OFFLINE"] = "1"                   # local weights: never reach for the internet
-    # vLLM renames its processes ("VLLM::...") through setproctitle; a no-op stand-in keeps `python run.py`.
-    sys.modules["setproctitle"] = types.SimpleNamespace(setproctitle=lambda *a, **k: None,
-                                                        getproctitle=lambda: "python run.py")
     print("[run.py] {} on GPU {} | {} as '{}' | http://{}:{}/v1".format(
         args.engine, args.gpu, args.model, args.served_name, args.host, args.port), flush=True)
     threading.Thread(target=announce_when_ready, args=(args.port,), daemon=True).start()
