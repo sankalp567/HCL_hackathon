@@ -12,3 +12,4 @@ __pycache__/
 data/reports/
 data/extracted/
 data/page_cache/
+data/logs/
