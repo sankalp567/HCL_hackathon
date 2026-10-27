@@ -1,6 +1,7 @@
 import pytest
 
-from extract.numbers import detect_unit, fy_from_header, normalise_label, parse_fy, parse_number, printed_number
+from extract.numbers import (detect_unit, format_value, fy_from_header, normalise_label, parse_fy, parse_number,
+                             printed_number)
 
 
 @pytest.mark.parametrize("text, expected", [
@@ -78,6 +79,18 @@ def test_detect_unit(text, expected):
 
 def test_detect_unit_without_percent():
     assert detect_unit("Revenue growth % (In ₹ crore)", allow_percent=False) == "INR crore"
+
+
+@pytest.mark.parametrize("value, unit, expected", [
+    (267021, "INR crore", "₹2,67,021 crore"),
+    (130144, "INR crore", "₹1,30,144 crore"),
+    (25.0, "%", "25.0%"),
+    (12.51, "%", "12.51%"),
+    (617437, "count", "6,17,437 employees"),
+    (20158, "USD million", "US$20,158 million"),
+])
+def test_format_value(value, unit, expected):
+    assert format_value(value, unit) == expected
 
 
 def test_normalise_label():

@@ -41,6 +41,32 @@ def printed_number(text: str) -> str | None:
     return match.group(0).strip("()") if match else None
 
 
+def indian(value: float, decimals: int = 0) -> str:
+    """Indian digit grouping: 267021 -> '2,67,021', 130144 -> '1,30,144'."""
+    whole, _, frac = f"{abs(value):.{decimals}f}".partition(".")
+    head, tail = whole[:-3], whole[-3:]
+    groups = []
+    while len(head) > 2:
+        groups.insert(0, head[-2:])
+        head = head[:-2]
+    if head:
+        groups.insert(0, head)
+    return ("-" if value < 0 else "") + ",".join(groups + [tail]) + (f".{frac}" if frac else "")
+
+
+def format_value(value: float, unit: str) -> str:
+    """How an answer prints a fact: '₹2,67,021 crore', '25.0%', '6,17,437 employees', 'US$20,158 million'."""
+    if unit == "INR crore":
+        return f"₹{indian(value)} crore"
+    if unit == "USD million":
+        return f"US${value:,.0f} million"
+    if unit == "%":
+        return f"{value:.2f}".rstrip("0").rstrip(".") + "%" if value % 1 else f"{value:.1f}%"
+    if unit == "count":
+        return f"{indian(value)} employees"
+    return f"{value:g} {unit}"
+
+
 def fy_label(end_year: int) -> str:
     """2026 -> 'FY2025-26' (Indian fiscal years end on 31 March)."""
     return f"FY{end_year - 1}-{end_year % 100:02d}"
