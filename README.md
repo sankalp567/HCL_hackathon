@@ -106,7 +106,7 @@ Only these three reports are used; no news, broker notes or websites.
 
 | Member | Roll no. | Contribution (three sentences) |
 |---|---|---|
-| Balbir Prasad | TODO | TODO |
+| Balbir Prasad | 25210034 | TODO |
 | Sankalp Turankar | 25210115 | TODO |
 | Karthik | 23110070 | TODO |
 | Avinash | 23110123 | TODO |
