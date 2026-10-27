@@ -1,6 +1,6 @@
 import pytest
 
-from extract.numbers import detect_unit, normalise_label, parse_fy, parse_number, printed_number
+from extract.numbers import detect_unit, fy_from_header, normalise_label, parse_fy, parse_number, printed_number
 
 
 @pytest.mark.parametrize("text, expected", [
@@ -15,12 +15,15 @@ from extract.numbers import detect_unit, normalise_label, parse_fy, parse_number
     ("H 2,67,021", (267021.0, False)),        # TCS font: rupee sign extracted as 'H'
     ("0.81", (0.81, False)),
     ("3.19", (3.19, False)),
+    ("6, 17 437", (617437.0, False)),         # TCS letter-spaced digits, repaired because commas mark one number
+    ("6, 02, 101", (602101.0, False)),
 ])
 def test_parse_number(text, expected):
     assert parse_number(text) == expected
 
 
-@pytest.mark.parametrize("text", ["-", "—", "", "Revenue", "1.2x", "Nil", "FY 2026 vs FY 2025"])
+@pytest.mark.parametrize("text", ["-", "—", "", "Revenue", "1.2x", "Nil", "FY 2026 vs FY 2025",
+                                  "97 5", "13."])   # TCS text layer lost the decimal point / a digit
 def test_parse_number_rejects_non_numbers(text):
     assert parse_number(text) is None
 
@@ -49,6 +52,16 @@ def test_parse_fy(text, expected):
 @pytest.mark.parametrize("text", ["Q4 FY26", "Quarter ended March 31, 2026", "Note No.", "2021-2025", ""])
 def test_parse_fy_rejects(text):
     assert parse_fy(text) is None
+
+
+@pytest.mark.parametrize("label, expected", [
+    ("Consolidated - 2026", "FY2025-26"),                                # Infosys p. 81 ratios table
+    ("(In ` crore) - Year ended March 31, - 2025", "FY2024-25"),         # Infosys p. 333
+    ("FY 2026 - Total (A)", "FY2025-26"),
+    ("Particulars", None),
+])
+def test_fy_from_header(label, expected):
+    assert fy_from_header(label) == expected
 
 
 @pytest.mark.parametrize("text, expected", [

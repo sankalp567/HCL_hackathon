@@ -19,10 +19,17 @@ def parse_number(text: str) -> tuple[float, bool] | None:
     s = text.strip().replace("−", "-").replace("–", "-").replace("—", "-")
     s = s.rstrip("*#†‡^¹²³⁴⁵").strip()
     is_percent = s.endswith("%")
-    s = _CURRENCY.sub("", s.rstrip("%").strip())
-    s = _SCALE_SUFFIX.sub("", s).replace(" ", "")
+    spaced = _SCALE_SUFFIX.sub("", _CURRENCY.sub("", s.rstrip("%").strip()))
+    if " " in spaced and "," not in spaced and "." not in spaced:
+        return None  # '97 5': digits split by a space with nothing to say how they join
+    s = spaced.replace(" ", "")
     if not _NUMBER.match(s):
-        return None
+        # TCS's text layer letter-spaces some digits: '6, 17 437' is 6,17,437. Repair only when commas
+        # show it is one number; '97 5' (a lost decimal point) stays unreadable.
+        digits = s.replace(",", "")
+        if not ("," in s and " " in spaced and re.fullmatch(r"\(?-?\d{4,9}\)?", digits)):
+            return None
+        s = digits
     negative = s.startswith("-") or (s.startswith("(") and s.endswith(")"))
     value = float(s.strip("()-").replace(",", ""))
     return (-value if negative else value), is_percent
@@ -61,6 +68,17 @@ def parse_fy(text: str) -> str | None:
         if match := pattern.search(text):
             year = int(next(g for g in match.groups() if g))
             return fy_label(year if year > 100 else 2000 + year)
+    return None
+
+
+def fy_from_header(label: str) -> str | None:
+    """Year of a column whose stacked headers were joined with ' - ', e.g. 'Consolidated - 2026' or
+    'Year ended March 31, - 2026': try the whole label, then each part from the most specific (last) one."""
+    if fy := parse_fy(label):
+        return fy
+    for part in reversed(label.split(" - ")):
+        if fy := parse_fy(part):
+            return fy
     return None
 
 
