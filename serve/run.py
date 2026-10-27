@@ -4,6 +4,7 @@
     python run.py                   # settings from run.json next to this file (falls back to the defaults below)
     python run.py --check           # health check + one short completion against a running server
     python run.py --setup-only      # only create .venv and install vLLM (needs internet)
+    python run.py --download-only   # only fetch the model weights (needs internet), e.g. while another model serves
 
 Two engines, chosen in run.json: "vllm" (faster; installs itself into .venv, so it needs internet once) or
 "transformers" (hf_server.py next to this file; uses an existing venv with torch + transformers, works offline).
@@ -81,6 +82,7 @@ def settings() -> argparse.Namespace:
     p.add_argument("--api-key", default=os.environ.get("VLLM_API_KEY", base["api_key"]),
                    help="bearer token clients must send; required when --host is not 127.0.0.1")
     p.add_argument("--setup-only", action="store_true")
+    p.add_argument("--download-only", action="store_true")
     p.add_argument("--check", action="store_true")
     args = p.parse_args()
     if base["engine"] not in ("vllm", "transformers"):
@@ -215,6 +217,16 @@ def serve(args: argparse.Namespace) -> int:
     return 0
 
 
+def download(args: argparse.Namespace) -> int:
+    """Fetch the weights into the Hugging Face cache, so a later start does not wait on the network."""
+    if Path(args.model).is_dir():
+        print("[run.py] {} is a local directory: nothing to download".format(args.model))
+        return 0
+    from huggingface_hub import snapshot_download
+    print("[run.py] DOWNLOADED to", snapshot_download(args.model), flush=True)
+    return 0
+
+
 def main() -> int:
     args = settings()
     if args.check:
@@ -223,6 +235,8 @@ def main() -> int:
     if args.setup_only:
         print("[run.py] .venv ready:", VENV)
         return 0
+    if args.download_only:
+        return download(args)
     return serve(args)
 
 
