@@ -54,6 +54,10 @@ Full table: [`eval/results.md`](eval/results.md). We chose the model by measurem
 
 **Vector search vs keyword search** (`eval/compare_retrieval.py`): the `RAG/` ChromaDB chunks, re-embedded with the same model (Qwen3-Embedding-0.6B), against our FTS5/BM25 retrieval, on the test set's 74 (question, company) pairs. Expected page retrieved: vectors 25/74, keywords 34/74; expected value retrieved: 23/74 vs 33/74. Vectors found 2 values keywords missed, keywords 12 that vectors missed: the two complement each other, so the planned next step is hybrid retrieval (BM25 + vectors, fused, then re-ranked), which `MY part/` implements.
 
+**Does the teammates' retrieval stack improve ours?** (`eval/compare_stages.py`): Sankalp's `MY part/` stages run over Karthik's chunks, same 74 pairs, top 4 per company. Expected page / value retrieved: his BM25 32 / 27; vectors 25 / 23; RRF fusion of both 34 / 28; fusion + lexical re-ranker **35 / 30**; our keyword retrieval over `facts.db` **34 / 33**. The full stack matches ours on pages and trails on values, because our passages carry each table's title and footnotes and our facts carry the clean number. Each finds things the other misses, so the integration worth doing after the freeze is: our facts first, then his fusion + re-ranker over both chunk sets as the passage retriever, measured on this test set.
+
+**Chat session context:** a short follow-up ("and for Infosys?", "what about FY2024-25?", "why?") takes the company, metric and year it does not name from the last three questions of the chat; the UI sends them with each question. **Chart requests:** "pie chart of headcount", "bar graph", "line plot" set the chart type the answer card draws (a pie is drawn as one bar per company for now, with a note).
+
 ## Run it
 
 Requirements: Python 3.12 and [uv](https://docs.astral.sh/uv/). A GPU is needed only to re-extract the PDFs or to host the model.
