@@ -29,6 +29,9 @@ HERE = Path(__file__).resolve().parent
 VENV = HERE / ".venv"
 VENV_PY = VENV / "bin" / "python"
 LOG = HERE / "vllm.log"
+# ramanujan's driver supports CUDA 12.8. vLLM 0.32 ships torch built for CUDA 13 ("driver too old" at start-up);
+# vLLM 0.11.0 uses torch 2.8 built for CUDA 12.8 and supports Qwen3.
+VLLM_VERSION = os.environ.get("VLLM_VERSION", "0.11.0")
 
 
 def parse_args() -> argparse.Namespace:
@@ -56,15 +59,16 @@ def ensure_venv() -> None:
     """Create .venv with vLLM on first use, then re-run this script inside it."""
     if in_venv():
         return
-    ready = VENV_PY.exists() and subprocess.run([str(VENV_PY), "-c", "import vllm"],
-                                                capture_output=True).returncode == 0
+    check = "import vllm, sys; sys.exit(vllm.__version__ != {!r})".format(VLLM_VERSION)
+    ready = VENV_PY.exists() and subprocess.run([str(VENV_PY), "-c", check], capture_output=True).returncode == 0
     if not ready:
         uv = shutil.which("uv") or str(Path.home() / ".local" / "bin" / "uv")
         if not Path(uv).exists():
             sys.exit("[run.py] uv not found: put the uv binary in ~/.local/bin/uv, then run again")
-        print("[run.py] creating .venv and installing vLLM (first run only, a few minutes)", flush=True)
-        subprocess.run([uv, "venv", "--python", "3.12", str(VENV)], check=True)
-        subprocess.run([uv, "pip", "install", "--python", str(VENV_PY), "vllm"], check=True)
+        print("[run.py] installing vLLM {} into .venv (first run only, a few minutes)".format(VLLM_VERSION), flush=True)
+        if not VENV_PY.exists():
+            subprocess.run([uv, "venv", "--python", "3.12", str(VENV)], check=True)
+        subprocess.run([uv, "pip", "install", "--python", str(VENV_PY), "vllm=={}".format(VLLM_VERSION)], check=True)
     os.execv(str(VENV_PY), [str(VENV_PY), str(Path(__file__).resolve())] + sys.argv[1:])
 
 
