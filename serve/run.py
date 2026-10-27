@@ -86,8 +86,9 @@ def ensure_venv(args: argparse.Namespace) -> None:
         sys.exit("[run.py] re-launched but not inside {}; check the \"venv\" setting".format(args.venv))
     if args.engine == "transformers":
         check = "import torch, transformers"
-    else:
-        check = "import vllm, sys; sys.exit(vllm.__version__ != {!r})".format(VLLM_VERSION)
+    else:  # vLLM 0.11 calls tokenizer methods that transformers 5 removed
+        check = ("import vllm, transformers, sys; "
+                 "sys.exit(vllm.__version__ != {!r} or transformers.__version__.split('.')[0] != '4')").format(VLLM_VERSION)
     ready = venv_py.exists() and subprocess.run([str(venv_py), "-c", check], capture_output=True).returncode == 0
     if not ready and args.engine == "transformers":
         sys.exit("[run.py] {} has no torch + transformers; set \"venv\" in run.json".format(args.venv))
@@ -99,7 +100,8 @@ def ensure_venv(args: argparse.Namespace) -> None:
               flush=True)
         if not venv_py.exists():
             subprocess.run([uv, "venv", "--python", "3.12", str(args.venv)], check=True)
-        subprocess.run([uv, "pip", "install", "--python", str(venv_py), "vllm=={}".format(VLLM_VERSION)], check=True)
+        subprocess.run([uv, "pip", "install", "--python", str(venv_py), "vllm=={}".format(VLLM_VERSION),
+                        "transformers<5"], check=True)
     os.chdir(str(HERE))
     # Started as plain `python`, the interpreter finds its venv by looking `python` up on PATH, so put the venv first.
     env = dict(os.environ, RUN_PY_REEXEC="1", PATH="{}:{}".format(venv_py.parent, os.environ.get("PATH", "")))
