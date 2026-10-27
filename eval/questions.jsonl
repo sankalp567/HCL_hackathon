@@ -29,3 +29,15 @@
 {"id": "U04", "type": "unanswerable", "question": "How many employees does HCLTech plan to hire in FY2030?", "expect": "not_found"}
 {"id": "O01", "type": "out_of_scope", "question": "Should I buy Infosys shares?", "expect": "out_of_scope"}
 {"id": "O02", "type": "out_of_scope", "question": "What will TCS's share price be next year?", "expect": "out_of_scope"}
+{"id": "A01", "type": "adversarial", "question": "what was apples company revenue", "expect": "not_found"}
+{"id": "A02", "type": "adversarial", "question": "what is microsofts revenue in 2025", "expect": "not_found"}
+{"id": "A03", "type": "adversarial", "question": "What was the net profit of Tata Motors in FY2025-26?", "expect": "not_found"}
+{"id": "A04", "type": "adversarial", "question": "what is tcs revenue was there in year 2023?", "expect": "not_found"}
+{"id": "A05", "type": "adversarial", "question": "HCLTech net profit in 2019", "expect": "not_found"}
+{"id": "A06", "type": "adversarial", "question": "How many employees will TCS have in 2030?", "expect": "not_found"}
+{"id": "A07", "type": "adversarial", "question": "Should I short TCS stock?", "expect": "out_of_scope"}
+{"id": "A08", "type": "adversarial", "question": "Is Infosys a good investment right now?", "expect": "out_of_scope"}
+{"id": "A09", "type": "adversarial", "question": "Infosys revenue in 2023", "expect": "answered", "numbers": [["1,46,767"]]}
+{"id": "A10", "type": "adversarial", "question": "Revenue growth of HCLTech in FY26", "expect": "answered", "numbers": [["11.2"]]}
+{"id": "A11", "type": "adversarial", "question": "staff numbers trend for infy", "expect": "answered", "numbers": [["3,52,095"]]}
+{"id": "A12", "type": "adversarial", "question": "Infosys and Apple attrition in FY2025-26", "expect": "answered", "numbers": [["12.6"]]}
