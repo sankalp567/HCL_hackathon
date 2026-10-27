@@ -1,0 +1,71 @@
+1. DAMAGE MARKERS on OCR'd pages (lower is better)
+   report    pages |   stray-space numbers |   garbled characters |  pages still damaged
+   hcltech       3 |         3 -> 2         |        5 -> 7         |        2 -> 2        
+   tcs         113 |       561 -> 28        |      749 -> 2         |      112 -> 4        
+   infosys       1 |         0 -> 0         |        6 -> 6         |        1 -> 1        
+   total       117 |       564 -> 30        |      760 -> 15        |      115 -> 7        
+
+2. HAND-CHECKED VALUES (read off the rendered pages)
+   ✓ -> ✓  tcs      p167  Revenue from operations FY26                   2,67,021
+   ✓ -> ✓  tcs      p167  Revenue from operations FY25                   2,55,324
+   ✓ -> ✓  tcs      p167  Other income FY26                              4,402
+   ✗ -> ✓  tcs      p167  Profit before exceptional items and tax FY26   70,013
+   ✗ -> ✓  tcs      p167  Profit before tax FY26                         65,487
+   ✗ -> ✓  tcs      p167  Profit before tax FY25                         65,331
+   ✓ -> ✓  tcs      p167  Current tax FY26                               16,388
+   ✗ -> ✓  tcs      p167  Total tax expense FY26                         16,033
+   ✗ -> ✓  tcs      p167  Profit for the year FY26                       49,454
+   ✗ -> ✓  tcs      p167  Profit for the year FY25                       48,797
+   ✗ -> ✓  tcs      p69   Column header                                  FY 2017
+   ✓ -> ✓  tcs      p69   Revenue from operations FY2026                 267,021
+   ✓ -> ✗  tcs      p69   United Kingdom revenue FY2022                  30,399
+   ✓ -> ✗  tcs      p69   Intangible and Goodwill FY2020                 1,993
+   ✓ -> ✓  tcs      p69   Profit before tax FY2026                       70,355
+   ✓ -> ✓  tcs      p69   Profit after tax FY2026                        52,820
+   ✓ -> ✓  tcs      p69   Headcount FY2026                               584,519
+   ✓ -> ✗  tcs      p69   Headcount FY2018                               394,998
+   ✗ -> ✓  tcs      p69   Row label                                      Earnings per share
+   ✗ -> ✓  tcs      p36   Consolidated revenue FY26                      2,67,021
+   ✗ -> ✓  tcs      p36   Consolidated revenue FY25                      2,55,324
+   ✓ -> ✓  tcs      p36   Retained earnings closing balance              84,329
+   ✗ -> ✗  tcs      p23   Employees                                      584,519
+   ✗ -> ✓  tcs      p23   Employee benefits expense                      154,994
+   ✗ -> ✗  tcs      p23   Equity                                         107,240
+   ✗ -> ✗  tcs      p23   Invested funds                                 50,020
+   ✗ -> ✗  tcs      p23   R&I spend                                      2,900
+   ✓ -> ✗  hcltech  p323  Shares in HCL Bermuda                          459,759,520
+   ✓ -> ✓  hcltech  p323  Investment value                               4,294
+   ✓ -> ✗  hcltech  p77   City name                                      Iași
+   ✓ -> ✓  hcltech  p77   City name                                      Timișoara
+   ✓ -> ✓  hcltech  p77   Organisation name                              Krakowska
+   ✓ -> ✓  infosys  p5    Client name                                    Mondelēz
+
+   correct before OCR: 18/33 | after OCR: 24/33
+   fixed: 11
+      - tcs p167 Profit before exceptional items and tax FY26 = 70,013
+      - tcs p167 Profit before tax FY26 = 65,487
+      - tcs p167 Profit before tax FY25 = 65,331
+      - tcs p167 Total tax expense FY26 = 16,033
+      - tcs p167 Profit for the year FY26 = 49,454
+      - tcs p167 Profit for the year FY25 = 48,797
+      - tcs p69 Column header = FY 2017
+      - tcs p69 Row label = Earnings per share
+      - tcs p36 Consolidated revenue FY26 = 2,67,021
+      - tcs p36 Consolidated revenue FY25 = 2,55,324
+      - tcs p23 Employee benefits expense = 154,994
+   broken: 5
+      - tcs p69 United Kingdom revenue FY2022 = 30,399
+      - tcs p69 Intangible and Goodwill FY2020 = 1,993
+      - tcs p69 Headcount FY2018 = 394,998
+      - hcltech p323 Shares in HCL Bermuda = 459,759,520
+      - hcltech p77 City name = Iași
+   both wrong: 4
+      - tcs p23 Employees = 584,519
+      - tcs p23 Equity = 107,240
+      - tcs p23 Invested funds = 50,020
+      - tcs p23 R&I spend = 2,900
+
+3. TIME PER PAGE on 6 OCR'd pages (cuda)
+   text layer  0.87 s/page
+   OCR         6.41 s/page
+   OCR costs 7.4x the normal parse

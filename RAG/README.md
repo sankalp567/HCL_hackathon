@@ -18,6 +18,7 @@ This folder turns the three FY2025-26 annual reports (**TCS, Infosys, HCLTech**,
 | `pipeline/chunk_reports.py` | Step 2: splits the reports into chunks and attaches metadata |
 | `pipeline/embed_chunks.py` | Step 3: embeds the chunks and writes the database. Also has `get_vectorstore()` for querying. |
 | `pipeline/config.py` | All settings: report list, embedding model, chunk size, paths |
+| `benchmarks/ocr_benchmark.py` | Measures text quality before vs after OCR on every OCR'd page. Saved output: `benchmarks/ocr_benchmark_results.txt` |
 | `requirements.txt` | Exact package versions used |
 
 ---
@@ -137,6 +138,45 @@ We tested PyMuPDF and Docling on CPU and GPU, on the same pages. "Values in the 
 
 Every chunk was checked afterwards. Apart from real accented names (Iași, Mondelēz) and TCS's product name "BαNCS", only **2 chunks** still contain damaged characters (see limitations).
 
+### OCR: before vs after (benchmark)
+
+**Why OCR at all?** A PDF stores two things for every character: the shape that is drawn, and a code saying which letter it is. On some TCS pages the shapes are right but the codes are wrong. So the page looks fine, while Docling and PyMuPDF, which both read the codes, get broken text (`48,797` → `48,97`, `2026` → `ϮϬϮϲ`). OCR ignores the codes and reads the rendered image instead. For the 117 flagged pages, the OCR text **replaces** the PDF's text.
+
+`benchmarks/ocr_benchmark.py` compares the two versions of every OCR'd page: *before* (Docling reading the PDF's text) and *after* (Docling with full-page OCR). The full output is in `benchmarks/ocr_benchmark_results.txt`.
+
+**1. Damage markers on the 117 OCR'd pages** (lower is better)
+
+| | Before OCR | After OCR |
+|---|---|---|
+| Numbers with a stray space (`65, 487`) | 564 | **30** |
+| Garbled-font characters (`ϮϬϮϲ`, `ĂƌŶŝŶŐƐ`, `༤`) | 760 | **15** |
+| Pages still showing damage | 115 | **7** |
+
+Of the 7 pages still showing damage, 3 are HCLTech/Infosys pages flagged only because of real accented names (Iași, Mondelēz), which were never damaged. That leaves 4 TCS pages.
+
+**2. Accuracy on 33 hand-checked values**
+
+These are figures and names read off the rendered page images, deliberately mixing values the PDF gets wrong with values it gets right:
+
+| | Before OCR | After OCR |
+|---|---|---|
+| Correct values | 18 / 33 | **24 / 33** |
+
+- **Fixed by OCR (11):** all the damaged TCS P&L totals (`70,013`, `65,487`, `65,331`, `16,033`, `49,454`, `48,797`), consolidated revenue in the Board's Report (`2,67,021`, `2,55,324`), the 10-year table's headers and labels (`FY 2017`, "Earnings per share"), and employee expense `154,994`.
+- **Broken by OCR (5):** values that were already correct and that OCR misread:
+  - TCS p. 69: `30,399` → `30339`, `1,993` → `19993`, `394,998` lost;
+  - HCLTech p. 323: `459,759,520` turned into `4s s`;
+  - HCLTech p. 77: `Iași` lost its diacritic.
+- **Wrong both ways (4):** TCS p. 23 is an infographic that Docling treats as a picture. Most of its text is missing whether or not OCR is used.
+
+**3. Cost:** 0.87 s/page normally vs 6.41 s/page with OCR, about 7.4 times slower (6 pages, RTX 4060). Over 117 pages that adds about 11 minutes, once.
+
+**Takeaway.** OCR is clearly worth it on pages where the **numbers** are damaged; it repairs every damaged TCS P&L total. All 5 regressions are on pages flagged only for **garbled labels**, whose numbers were already correct. A possible refinement, not implemented:
+- for pages flagged only for garbled characters, keep the PDF's numbers and take only the labels from OCR, or
+- use OCR only on pages flagged for spaced-out numbers.
+
+To re-run: `python RAG/benchmarks/ocr_benchmark.py`. It needs `data/parsed/`, which `parse_reports.py` produces.
+
 ### Retrieval smoke test (plain vector search, top 2 results, run on the committed database)
 | Question | HCLTech | TCS | Infosys |
 |---|---|---|---|
@@ -182,6 +222,7 @@ python -c "import sqlite3; c=sqlite3.connect('RAG/data/vectorstore/chroma.sqlite
 
 ## Known limitations
 - **Two damaged TCS chunks:** one on pp. 44–45 (a chunk that crosses into an OCR'd page) and one value reading `6ε6` on p. 305.
+- **OCR misreads:** on pages flagged only for garbled labels, OCR misread a few figures that were correct in the PDF (e.g. TCS p. 69 `30,399` → `30339`). See [the OCR benchmark](#ocr-before-vs-after-benchmark).
 - **Duplicate text:** the PyMuPDF fallback can repeat text Docling already captured on the same page. These chunks are plain text without table structure.
 - **Ranking:** plain vector search misses some numeric questions in its top 2 (TCS revenue, attrition; see the smoke test above). BM25 plus a re-ranker is the planned fix.
 - **Citations use PDF page numbers, not the numbers printed on the page.** TCS's printed numbers are damaged, and spreads put two printed pages on one PDF page.
