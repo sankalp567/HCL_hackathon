@@ -253,6 +253,7 @@ def test_router_maps_unrecognised_wording_to_a_metric(settings):
     ("Infosys attrition chart", '{"metrics": ["revenue"]}'),                    # the rules' metric wins
     ("plot dividend per share of Infosys", '{"metrics": ["dividend_per_share"]}'),  # not on the list: dropped
     ("plot dividend per share of Infosys", "Dividends were 48 per share."),       # an answer, not a plan
+    ("What was the large deal value of Infosys?", '{"metrics": ["attrition"]}'),  # no data wording: not mapped
 ])
 def test_router_never_overrides_rules_or_invents_metrics(settings, question, reply):
     llm = CountingLLM(ANSWER, plan_reply=reply)
@@ -274,6 +275,18 @@ def test_another_company_next_to_ours_gets_a_notice(settings):
     events = ask(TestClient(create_app(settings, llm=llm)), "Infosys and Apple attrition in FY2025-26")
     assert [d["message"] for e, d in events if e == "notice"] == ["Apple is not covered; answering for the companies that are."]
     assert done_of(events)["status"] == "answered"
+
+
+def test_investment_advice_in_any_wording_is_out_of_scope(settings):
+    llm = CountingLLM(ANSWER, plan_reply='{"advice": true}')
+    done = done_of(ask(TestClient(create_app(settings, llm=llm)), "Is Infosys a good investment right now?"))
+    assert (done["status"], done["gate"]) == ("out_of_scope", "scope") and llm.calls == 0
+
+
+def test_an_answer_without_the_asked_figure_is_not_found(settings):
+    llm = CountingLLM(["The report presents attrition for the year [1]."], plan_reply='{"metrics": ["attrition"], "part": true}')
+    done = done_of(ask(TestClient(create_app(settings, llm=llm)), "What was Infosys's attrition in Bengaluru in FY2025-26?"))
+    assert (done["status"], done["gate"]) == ("not_found", "no_figure") and llm.calls == 1
 
 
 @pytest.mark.parametrize("flag", ["part", "computed"])
@@ -348,6 +361,18 @@ def test_metric_lookup_is_answered_from_facts_without_the_model(settings):
 ])
 def test_understand_finds_the_metric(question, metric):
     assert understand(question).metric == metric
+
+
+@pytest.mark.parametrize("question, fy", [
+    ("what is tcs revenue was there in year 2023?", "FY2022-23"),   # typed in the UI; was answered with FY26
+    ("Infosys headcount in 2025", "FY2024-25"),
+    ("TCS revenue FY2025-26", "FY2025-26"),
+    ("HCLTech revenue in 2025-26", "FY2025-26"),
+    ("Compare revenue of TCS and Infosys", None),
+    ("TCS revenue of 2,67,021 crore", None),
+])
+def test_understand_reads_the_year(question, fy):
+    assert understand(question).fy == fy
 
 
 SOURCES = [{"n": 1, "company": "TCS", "text": "TCS revenue from operations FY2025-26: 2,67,021"},

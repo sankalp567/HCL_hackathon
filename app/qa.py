@@ -46,6 +46,7 @@ FY_EXPR = re.compile(r"\bFY\s*'?\d{2,4}(?:\s*[-–]\s*\d{2,4})?|\b(?:19|20)\d{2}
 SENTENCE_BREAK = re.compile(r"((?<=[.!?])\s+|\n+)")
 EXPLAIN = re.compile(r"\b(why|explain|describe|reasons?|drivers?|factors?|impact|strategy|what (drove|caused|led))\b"
                      r"|\bhow\b(?!\s+(many|much))", re.I)   # 'how many employees' is still a lookup
+HOW_MANY = re.compile(r"\bhow (many|much)\b", re.I)
 OTHER_COMPANIES = re.compile(r"\b(wipro|accenture|cognizant|tech\s*mahindra|ltimindtree|mphasis|capgemini|ibm|"
                              r"persistent systems|coforge|hexaware|deloitte)\b", re.I)
 NOT_COVERED = "Not found in the reports: only the TCS, Infosys and HCLTech annual reports are covered."
@@ -55,28 +56,37 @@ TERMS = {"revenue": "revenue from operations", "revenue_usd": "revenue (US$)", "
 
 CHECK_PROMPT = """You check a question before it is answered from the FY2025-26 annual reports of TCS, Infosys and HCLTech. Do not answer it.
 Reply with one JSON object and nothing else:
-{"other_companies": [name, ...], "metrics": [metric, ...], "part": true | false, "computed": true | false, "show": [any of "text", "chart", "table"], "chart": "auto" | "bar" | "line" | "pie"}
+{"other_companies": [name, ...], "metrics": [metric, ...], "part": true | false, "computed": true | false, "advice": true | false, "show": [any of "text", "chart", "table"], "chart": "auto" | "bar" | "line" | "pie"}
 other_companies: companies or organisations other than TCS, Infosys and HCLTech whose own figures or facts the question asks for ("Google's revenue" -> ["Google"]; "TCS's partnership with Microsoft" -> [], because it asks about TCS).
 metrics: which of revenue, revenue_usd, net_profit, operating_margin, headcount, attrition the question asks about (operating_margin includes EBIT margin, attrition includes turnover rate, headcount means employees); [] for anything else.
 part: true when it asks for only part of a metric (a segment, region, client group, city or quarter).
 computed: true when it asks for something calculated from the figures (growth, change, ratio, per employee, rank).
+advice: true when it asks for investment advice, a share-price or stock prediction, or whether to buy, sell, short or hold shares.
 show: "chart" or "table" only for those metrics; add "text" when the question asks why, how, or what a report says."""
 CHECK_EXAMPLES = [
     ("Compare revenue of TCS and Infosys",
-     {"other_companies": [], "metrics": ["revenue"], "part": False, "computed": False, "show": ["chart"], "chart": "auto"}),
+     {"other_companies": [], "metrics": ["revenue"], "part": False, "computed": False, "advice": False, "show": ["chart"], "chart": "auto"}),
     ("What was Google's net profit last year?",
-     {"other_companies": ["Google"], "metrics": ["net_profit"], "part": False, "computed": False, "show": ["text"], "chart": "auto"}),
+     {"other_companies": ["Google"], "metrics": ["net_profit"], "part": False, "computed": False, "advice": False, "show": ["text"], "chart": "auto"}),
     ("What does TCS say about its partnership with Microsoft?",
-     {"other_companies": [], "metrics": [], "part": False, "computed": False, "show": ["text"], "chart": "auto"}),
+     {"other_companies": [], "metrics": [], "part": False, "computed": False, "advice": False, "show": ["text"], "chart": "auto"}),
     ("How much revenue did Infosys earn from North America?",
-     {"other_companies": [], "metrics": ["revenue"], "part": True, "computed": False, "show": ["text"], "chart": "auto"}),
+     {"other_companies": [], "metrics": ["revenue"], "part": True, "computed": False, "advice": False, "show": ["text"], "chart": "auto"}),
     ("By how much did TCS's net profit grow, and what is it per employee?",
-     {"other_companies": [], "metrics": ["net_profit", "headcount"], "part": False, "computed": True, "show": ["text"], "chart": "auto"}),
+     {"other_companies": [], "metrics": ["net_profit", "headcount"], "part": False, "computed": True, "advice": False, "show": ["text"], "chart": "auto"}),
+    ("Is HCLTech stock worth buying after these results?",
+     {"other_companies": [], "metrics": [], "part": False, "computed": False, "advice": True, "show": ["text"], "chart": "auto"}),
     ("Why did HCLTech's margin change?",
-     {"other_companies": [], "metrics": ["operating_margin"], "part": False, "computed": False, "show": ["chart", "text"], "chart": "auto"}),
+     {"other_companies": [], "metrics": ["operating_margin"], "part": False, "computed": False, "advice": False, "show": ["chart", "text"], "chart": "auto"}),
     ("Table of net profit and employees for FY26",
-     {"other_companies": [], "metrics": ["net_profit", "headcount"], "part": False, "computed": False, "show": ["table"], "chart": "auto"}),
+     {"other_companies": [], "metrics": ["net_profit", "headcount"], "part": False, "computed": False, "advice": False, "show": ["table"], "chart": "auto"}),
 ]
+
+
+# The check's metric stands in for the rules' only when the wording asks for numbers or a picture ('staff numbers trend
+# for infy'). Elsewhere a related metric answers a different question: 'large deal TCV' is not revenue.
+WANTS_DATA = re.compile(r"chart|plot|graph|\bpie\b|\btables?\b|\btrend|visuali[sz]|\bcompar|\bvs\b|\bversus\b"
+                        r"|\bhow (many|much)\b|\bnumbers?\b|\bfigures?\b|\bgrowth\b|\bshare\b", re.I)
 
 
 def checked(raw: object) -> dict | None:
@@ -89,6 +99,7 @@ def checked(raw: object) -> dict | None:
     show = [s for s in raw.get("show") or [] if s in ("text", "chart", "table")] or ["chart"]
     chart = raw.get("chart") if raw.get("chart") in ("bar", "line", "pie") else "auto"
     return {"others": others, "whole": raw.get("part") is not True and raw.get("computed") is not True,   # only an explicit yes reroutes
+            "advice": raw.get("advice") is True,
             "plan": {"metric": metrics[0], "metrics": metrics, "show": show, "chart": chart} if metrics else None}
 
 
@@ -364,6 +375,10 @@ def _answer_events(question: str, settings: Settings, llm: LLM, companies: list[
 
         check = check_question(question, llm, cache)
         record["check"] = check
+        if check and check["advice"]:   # wording the scope rule misses ('is it a good investment', 'short it')
+            yield "meta", {"query_id": query_id, "understood": understand(question).as_dict(), "sources": []}
+            yield done("out_of_scope", "scope", OUT_OF_SCOPE_MESSAGE)
+            return
         others = [o for o in (check["others"] if check else []) if not (other and other.group(0).lower() in o.lower())]
         if others:
             names = " and ".join(others) + (" is" if len(others) == 1 else " are")
@@ -373,7 +388,7 @@ def _answer_events(question: str, settings: Settings, llm: LLM, companies: list[
                                                     "Infosys and HCLTech annual reports are.")
                 return
             yield "notice", {"message": f"{names} not covered; answering for the companies that are."}
-        plan = check["plan"] if check and not understand(question).metric else None
+        plan = check["plan"] if check and not understand(question).metric and WANTS_DATA.search(question) else None
         with closing(connect(settings.facts_db)) as conn:
             understood, sources = build_sources(conn, question, companies, metric=plan["metric"] if plan else None)
         record |= {"understood": understood.as_dict(), "plan": plan,
@@ -423,6 +438,11 @@ def _answer_events(question: str, settings: Settings, llm: LLM, companies: list[
             return
         answer, sentences = verify_answer(answer, sources)
         record["sentences"] = sentences
+        if (backend != "facts" and (understood.metric or HOW_MANY.search(question)) and not EXPLAIN.search(question)
+                and not _numbers(answer, drop_years=True)):
+            # a figure was asked for and the checked answer gives none ('the report presents revenue in crore [4]')
+            yield done("not_found", "no_figure", f"Not found in the reports: no figure answers this question. {searched}")
+            return
         yield "final", {"answer": answer, "sentences": sentences}
         if not answer:
             yield done("not_found", "unverified", f"Not found in the reports: no sentence could be verified. {searched}")

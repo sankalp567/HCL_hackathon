@@ -60,6 +60,11 @@ def fiscal_year(text: str) -> str | None:
     m = re.search(r"\bfiscal\s+(?:year\s+)?(20\d{2})\b", t)
     if m:
         return _fy(int(m[1]))
+    # a bare year ('revenue in 2023') is the fiscal year ending 31 March of that year, as the reports count;
+    # ignoring it would answer with other years
+    m = re.search(r"(?<![\d,.])(20\d{2})(?![\d,.]|\s*[-–/]\s*\d)", t)
+    if m:
+        return _fy(int(m[1]))
     return None
 
 
