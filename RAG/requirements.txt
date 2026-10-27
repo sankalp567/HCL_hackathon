@@ -1,0 +1,14 @@
+# RAG ingestion pipeline (parse -> chunk -> embed). Tested with Python 3.11 on Windows + RTX 4060.
+# Install the CUDA build of PyTorch first (see README), then: pip install -r requirements.txt
+docling==2.111.0
+docling-core==2.86.0
+PyMuPDF==1.27.2.3
+rapidocr==3.9.1
+onnxruntime==1.27.0
+transformers==5.12.1
+sentence-transformers==5.6.0
+langchain-core==1.7.0
+langchain-text-splitters==1.1.2
+langchain-huggingface==1.2.3
+langchain-chroma==1.1.0
+chromadb==1.5.9
