@@ -77,15 +77,35 @@ def understand(question: str) -> Understood:
     return Understood(companies=named or list(COMPANIES), metric=metric, fy=fiscal_year(question), named=bool(named))
 
 
-def fts_query(question: str) -> str:
-    """A safe FTS5 query: the question's content words, quoted and OR-ed (numbers and FY tokens dropped)."""
+SYNONYMS = {  # the words each report uses for a metric (extract/metrics.yaml), added to the keyword search
+    "revenue": ["revenue", "operations"],
+    "revenue_usd": ["revenue", "million"],
+    "net_profit": ["profit", "attributable", "net"],
+    "operating_margin": ["operating", "margin", "ebit"],
+    "headcount": ["employees", "headcount", "workforce"],
+    "attrition": ["attrition", "turnover", "voluntary"],
+}
+
+
+def expansion(understood: Understood) -> list[str]:
+    """Synonyms of the asked metric plus how the reports write the year ('fiscal 2026', 'March 31, 2026')."""
+    terms = list(SYNONYMS.get(understood.metric or "", []))
+    if understood.fy:
+        terms += [str(int(understood.fy[2:6]) + 1), "fiscal"]
+    return terms
+
+
+def fts_query(question: str, extra: list[str] | tuple = ()) -> str:
+    """A safe FTS5 query: the question's content words, quoted and OR-ed (numbers and FY tokens dropped),
+    plus any extra terms (synonyms, the year)."""
     words = re.findall(r"[a-z0-9]+", question.lower())
     keep = [w for w in words if len(w) > 1 and w not in STOPWORDS and not w.isdigit() and not re.fullmatch(r"fy\d+", w)]
-    return " OR ".join(f'"{w}"' for w in dict.fromkeys(keep))
+    return " OR ".join(f'"{w}"' for w in dict.fromkeys(keep + [t.lower() for t in extra]))
 
 
-def search_passages(conn: sqlite3.Connection, question: str, companies: list[str]) -> list[dict]:
-    query = fts_query(question)
+def search_passages(conn: sqlite3.Connection, question: str, companies: list[str],
+                    extra: list[str] | tuple = ()) -> list[dict]:
+    query = fts_query(question, extra)
     if not query:
         return []
     hits: list[dict] = []
@@ -150,13 +170,14 @@ def build_sources(conn: sqlite3.Connection, question: str,
     if scope and not understood.named:
         understood.companies = scope
     facts = lookup_facts(conn, understood.companies, understood.metric, understood.fy)
-    passages = search_passages(conn, question, understood.companies)
+    passages = search_passages(conn, question, understood.companies, expansion(understood))
     sources: list[dict] = []
     for f in facts:
         sources.append({
             "kind": "fact", "company": f["company"], "report": f["title"], "pdf": f["file"], "doc_id": f["doc_id"],
             "page": f["page_no"], "text": _fact_text(f), "score": None, "fact_id": f["fact_id"],
             "bbox": [f["x0"], f["y0"], f["x1"], f["y1"]] if f["x0"] is not None else None,
+            "metric": f["metric"], "fy": f["fy"], "value": f["value"], "unit": f["unit"], "quote": f["quote"],
         })
     for p in passages:
         sources.append({
