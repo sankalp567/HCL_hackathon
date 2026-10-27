@@ -1,6 +1,7 @@
-# Report PDFs and everything the pipeline generates (rebuild with the three scripts)
+# Committed: data/vectorstore/ (ready-to-query ChromaDB) and data/chunks/ (chunk text + metadata).
+# Not committed: the PDFs and the raw Docling parse output (125 MB; parse_reports.py regenerates it).
 reports/
-data/
+data/parsed/
 __pycache__/
 *.pyc
 .venv*/
