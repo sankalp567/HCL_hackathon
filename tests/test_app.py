@@ -249,16 +249,38 @@ def test_router_maps_unrecognised_wording_to_a_metric(settings):
     assert (llm.plan_calls, llm.calls) == (1, 0)   # the second time the plan comes from the cache
 
 
-@pytest.mark.parametrize("question, reply, plan_calls", [
-    ("Infosys attrition chart", '{"metrics": ["attrition"]}', 0),                    # the rules know the metric
-    ("plot dividend per share of Infosys", '{"metrics": ["dividend_per_share"]}', 1),  # not on the list: dropped
-    ("plot dividend per share of Infosys", "Dividends were 48 per share.", 1),       # an answer, not a plan
+@pytest.mark.parametrize("question, reply", [
+    ("Infosys attrition chart", '{"metrics": ["revenue"]}'),                    # the rules' metric wins
+    ("plot dividend per share of Infosys", '{"metrics": ["dividend_per_share"]}'),  # not on the list: dropped
+    ("plot dividend per share of Infosys", "Dividends were 48 per share."),       # an answer, not a plan
 ])
-def test_router_never_overrides_rules_or_invents_metrics(settings, question, reply, plan_calls):
+def test_router_never_overrides_rules_or_invents_metrics(settings, question, reply):
     llm = CountingLLM(ANSWER, plan_reply=reply)
     understood = ask(TestClient(create_app(settings, llm=llm)), question)[0][1]["understood"]
-    assert "plan" not in understood and llm.plan_calls == plan_calls
+    assert "plan" not in understood and llm.plan_calls == 1
     assert understood["metric"] == ("attrition" if "attrition" in question else None)
+
+
+def test_a_company_we_do_not_cover_is_not_found(settings):
+    llm = CountingLLM(ANSWER, plan_reply='{"other_companies": ["Apple"], "metrics": ["revenue"]}')
+    events = ask(TestClient(create_app(settings, llm=llm)), "what was apples company revenue")
+    done = done_of(events)
+    assert (done["status"], done["gate"]) == ("not_found", "coverage") and "Apple is not covered" in done["message"]
+    assert not [e for e, _ in events if e == "token"] and llm.calls == 0
+
+
+def test_another_company_next_to_ours_gets_a_notice(settings):
+    llm = CountingLLM(ANSWER, plan_reply='{"other_companies": ["Apple", "Infosys"], "metrics": ["attrition"]}')
+    events = ask(TestClient(create_app(settings, llm=llm)), "Infosys and Apple attrition in FY2025-26")
+    assert [d["message"] for e, d in events if e == "notice"] == ["Apple is not covered; answering for the companies that are."]
+    assert done_of(events)["status"] == "answered"
+
+
+@pytest.mark.parametrize("flag", ["part", "computed"])
+def test_part_or_computed_value_is_not_answered_by_the_template(settings, flag):
+    llm = CountingLLM(ANSWER, plan_reply=f'{{"metrics": ["attrition"], "{flag}": true}}')
+    events = ask(TestClient(create_app(settings, llm=llm)), "What was Infosys's attrition in Bengaluru in FY2025-26?")
+    assert done_of(events)["backend"] == "fake" and llm.calls == 1   # the model answers from the sources
 
 
 def test_vllm_unreachable_falls_back_to_extractive(settings):

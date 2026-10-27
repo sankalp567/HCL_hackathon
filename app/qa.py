@@ -53,58 +53,69 @@ TERMS = {"revenue": "revenue from operations", "revenue_usd": "revenue (US$)", "
          "operating_margin": "operating margin", "headcount": "employees", "attrition": "attrition"}
 
 
-ROUTER_PROMPT = """Classify a question about the TCS, Infosys and HCLTech annual reports. Do not answer it.
+CHECK_PROMPT = """You check a question before it is answered from the FY2025-26 annual reports of TCS, Infosys and HCLTech. Do not answer it.
 Reply with one JSON object and nothing else:
-{"show": [any of "text", "chart", "table"], "metrics": [metric, ...], "chart": "auto" | "bar" | "line" | "pie"}
-metric: one of revenue, revenue_usd, net_profit, operating_margin, headcount, attrition (operating_margin includes EBIT margin, attrition includes turnover rate, headcount means employees).
-Use "chart" or "table" only for those metrics; for anything else reply "metrics": [] and "show": ["text"].
-Add "text" when the question asks why, how, or what a report says."""
-ROUTER_EXAMPLES = [
-    ("Compare revenue of TCS and Infosys", {"show": ["chart"], "metrics": ["revenue"], "chart": "auto"}),
-    ("Why did HCLTech's margin change?", {"show": ["chart", "text"], "metrics": ["operating_margin"], "chart": "auto"}),
-    ("What does TCS say about AI?", {"show": ["text"], "metrics": [], "chart": "auto"}),
+{"other_companies": [name, ...], "metrics": [metric, ...], "part": true | false, "computed": true | false, "show": [any of "text", "chart", "table"], "chart": "auto" | "bar" | "line" | "pie"}
+other_companies: companies or organisations other than TCS, Infosys and HCLTech whose own figures or facts the question asks for ("Google's revenue" -> ["Google"]; "TCS's partnership with Microsoft" -> [], because it asks about TCS).
+metrics: which of revenue, revenue_usd, net_profit, operating_margin, headcount, attrition the question asks about (operating_margin includes EBIT margin, attrition includes turnover rate, headcount means employees); [] for anything else.
+part: true when it asks for only part of a metric (a segment, region, client group, city or quarter).
+computed: true when it asks for something calculated from the figures (growth, change, ratio, per employee, rank).
+show: "chart" or "table" only for those metrics; add "text" when the question asks why, how, or what a report says."""
+CHECK_EXAMPLES = [
+    ("Compare revenue of TCS and Infosys",
+     {"other_companies": [], "metrics": ["revenue"], "part": False, "computed": False, "show": ["chart"], "chart": "auto"}),
+    ("What was Google's net profit last year?",
+     {"other_companies": ["Google"], "metrics": ["net_profit"], "part": False, "computed": False, "show": ["text"], "chart": "auto"}),
+    ("What does TCS say about its partnership with Microsoft?",
+     {"other_companies": [], "metrics": [], "part": False, "computed": False, "show": ["text"], "chart": "auto"}),
+    ("How much revenue did Infosys earn from North America?",
+     {"other_companies": [], "metrics": ["revenue"], "part": True, "computed": False, "show": ["text"], "chart": "auto"}),
+    ("By how much did TCS's net profit grow, and what is it per employee?",
+     {"other_companies": [], "metrics": ["net_profit", "headcount"], "part": False, "computed": True, "show": ["text"], "chart": "auto"}),
+    ("Why did HCLTech's margin change?",
+     {"other_companies": [], "metrics": ["operating_margin"], "part": False, "computed": False, "show": ["chart", "text"], "chart": "auto"}),
     ("Table of net profit and employees for FY26",
-     {"show": ["table"], "metrics": ["net_profit", "headcount"], "chart": "auto"}),
+     {"other_companies": [], "metrics": ["net_profit", "headcount"], "part": False, "computed": False, "show": ["table"], "chart": "auto"}),
 ]
-# Wording that asks for numbers or a picture: only such questions are worth a router call when the rules found no metric.
-WANTS_DATA = re.compile(r"chart|plot|graph|\bpie\b|\btables?\b|\btrend|visuali[sz]|\bcompar|\bvs\b|\bversus\b"
-                        r"|\bhow (many|much)\b|\bnumbers?\b|\bfigures?\b|\bgrowth\b|\bshare\b", re.I)
 
 
-def checked_plan(raw: object) -> dict | None:
-    """Keep only choices from the fixed lists. A plan without a known metric is no plan."""
+def checked(raw: object) -> dict | None:
+    """Keep only well-formed choices: names of companies we do not cover, metrics from the fixed list, the plan."""
     if not isinstance(raw, dict):
         return None
+    others = [o.strip() for o in raw.get("other_companies") or [] if isinstance(o, str) and o.strip()
+              and not any(pattern.search(o) for pattern in COMPANIES.values())]
     metrics = [m for m in raw.get("metrics") or [] if isinstance(m, str) and m in TERMS]
-    if not metrics:
-        return None
     show = [s for s in raw.get("show") or [] if s in ("text", "chart", "table")] or ["chart"]
     chart = raw.get("chart") if raw.get("chart") in ("bar", "line", "pie") else "auto"
-    return {"metric": metrics[0], "metrics": metrics, "show": show, "chart": chart}
+    return {"others": others, "whole": raw.get("part") is not True and raw.get("computed") is not True,   # only an explicit yes reroutes
+            "plan": {"metric": metrics[0], "metrics": metrics, "show": show, "chart": chart} if metrics else None}
 
 
-def route(question: str, llm: LLM, cache: Cache) -> dict | None:
-    """For a question whose wording asks for data or a chart but in which the rules found no metric ('staff numbers
-    trend for infy'), the model chooses from fixed lists which metric to show and how. The plan only selects data in
-    facts.db: the model never supplies a number. None when there is nothing to route or no usable plan, and the
-    question then goes on exactly as before."""
+def check_question(question: str, llm: LLM, cache: Cache) -> dict | None:
+    """One short model call reads the question for what keyword rules miss: a company we do not cover ('apples
+    company revenue'), a question about only part of a metric or something computed from it ('revenue from North
+    America', 'revenue growth'), and which metric and chart it wants when the rules found none ('staff numbers trend
+    for infy'). The model only chooses from fixed lists and never supplies a number. Cached per question; None when
+    no model answers, and the rules then decide alone, as before."""
     complete = getattr(llm, "complete", None)
-    if complete is None or understand(question).metric or not WANTS_DATA.search(question):
+    if complete is None:
         return None
-    key = ("plan", normalise(question), ROUTER_PROMPT, _model_id(llm))
+    key = ("check", normalise(question), CHECK_PROMPT, _model_id(llm))
     cached = cache.get(key)
     if cached is not None:
-        return cached or None
-    messages = [{"role": "system", "content": ROUTER_PROMPT}]
-    for example, plan in ROUTER_EXAMPLES:
-        messages += [{"role": "user", "content": example}, {"role": "assistant", "content": json.dumps(plan)}]
+        return cached
+    messages = [{"role": "system", "content": CHECK_PROMPT}]
+    for example, reply in CHECK_EXAMPLES:
+        messages += [{"role": "user", "content": example}, {"role": "assistant", "content": json.dumps(reply)}]
     try:
-        reply = complete(messages + [{"role": "user", "content": question}])
-        plan = checked_plan(json.loads(re.sub(r"^```(?:json)?\s*|\s*```$", "", reply.strip())))
+        reply = complete(messages + [{"role": "user", "content": question}], max_tokens=120)
+        result = checked(json.loads(re.sub(r"^```(?:json)?\s*|\s*```$", "", reply.strip())))
     except (LLMUnavailable, ValueError):   # no server answered, or the reply was not JSON
         return None
-    cache.put(key, plan or {})   # {} remembers "nothing to route": the same question costs no second call
-    return plan
+    if result is not None and getattr(llm, "last_model", None) == getattr(llm, "model", None):
+        cache.put(key, result)   # only the first-choice model's reading is kept
+    return result
 
 
 def _term(source: dict) -> str:
@@ -351,7 +362,18 @@ def _answer_events(question: str, settings: Settings, llm: LLM, companies: list[
         if other:
             yield "notice", {"message": f"{other.group(0)} is not covered; answering for the companies that are."}
 
-        plan = route(question, llm, cache)
+        check = check_question(question, llm, cache)
+        record["check"] = check
+        others = [o for o in (check["others"] if check else []) if not (other and other.group(0).lower() in o.lower())]
+        if others:
+            names = " and ".join(others) + (" is" if len(others) == 1 else " are")
+            if not understand(question).named:
+                yield "meta", {"query_id": query_id, "understood": understand(question).as_dict(), "sources": []}
+                yield done("not_found", "coverage", f"Not found in the reports: {names} not covered; only the TCS, "
+                                                    "Infosys and HCLTech annual reports are.")
+                return
+            yield "notice", {"message": f"{names} not covered; answering for the companies that are."}
+        plan = check["plan"] if check and not understand(question).metric else None
         with closing(connect(settings.facts_db)) as conn:
             understood, sources = build_sources(conn, question, companies, metric=plan["metric"] if plan else None)
         record |= {"understood": understood.as_dict(), "plan": plan,
@@ -371,7 +393,9 @@ def _answer_events(question: str, settings: Settings, llm: LLM, companies: list[
             return
 
         out: list[str] = []
-        templated = fact_answer(question, understood, sources)
+        # a part of a metric ('revenue from North America') or something computed from it ('growth') is not the
+        # template's company-wide value: the model answers it from the sources, or says it is not found
+        templated = fact_answer(question, understood, sources) if not check or check["whole"] else None
         if templated:  # a metric lookup or comparison: answered from facts.db, no model call
             backend = "facts"
             out.append(templated)
