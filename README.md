@@ -66,9 +66,9 @@ LLM_BACKEND=vllm LLM_BASE_URL="http://127.0.0.1:8002/v1,http://127.0.0.1:8001/v1
 
 | Company | Report | Fiscal year | Pages | URL | Downloaded | SHA-256 |
 |---|---|---|---|---|---|---|
-| TCS | TCS Annual Report 2025-26 | FY2025-26 | 360 | TODO | 2026-10-27 | `a19bddbe…a5a0` |
-| Infosys | Infosys Integrated Annual Report 2025-26 | FY2025-26 | 383 | TODO | 2026-10-27 | `602f04ec…078f` |
-| HCLTech | HCLTech Integrated Annual Report 2025-26 | FY2025-26 | 462 | TODO | 2026-10-27 | `6cb198ff…82d0` |
+| TCS | TCS Annual Report 2025-26 | FY2025-26 | 360 | [tcs.com/…/annual-report-2025-2026.pdf](https://www.tcs.com/content/dam/tcs/investor-relations/financial-statements/2025-26/ar/annual-report-2025-2026.pdf) | 2026-10-27 | `a19bddbe…a5a0` |
+| Infosys | Infosys Integrated Annual Report 2025-26 | FY2025-26 | 383 | [infosys.com/…/infosys-ar-26.pdf](https://www.infosys.com/investors/reports-filings/annual-report/annual/documents/infosys-ar-26.pdf) | 2026-10-27 | `602f04ec…078f` |
+| HCLTech | HCLTech Integrated Annual Report 2025-26 | FY2025-26 | 462 | [hcltech.com/…/Annual-Report-2025-26](https://www.hcltech.com/hcl-annual-report-2026/pdfs/Annual-Report-2025-26) | 2026-10-27 | `6cb198ff…82d0` |
 
 Only these three reports are used; no news, broker notes or websites.
 
@@ -87,12 +87,12 @@ Only these three reports are used; no news, broker notes or websites.
 
 ## Team
 
-| Member | Contribution (three sentences) |
-|---|---|
-| TODO | TODO |
-| TODO | TODO |
-| TODO | TODO |
-| TODO | TODO |
+| Member | Roll no. | Contribution (three sentences) |
+|---|---|---|
+| Balbir Prasad | TODO | TODO |
+| Sankalp Turankar | 25210115 | TODO |
+| Karthik | 23110070 | TODO |
+| Avinash | 2311012 | TODO |
 
 ## Use of AI assistants
 
