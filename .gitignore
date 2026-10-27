@@ -14,3 +14,4 @@ data/extracted/
 data/page_cache/
 data/logs/
 data/cache/
+eval/retrieval_compare/docs.jsonl
