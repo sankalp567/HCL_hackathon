@@ -166,10 +166,13 @@ def _fact_text(f: dict) -> str:
     return text
 
 
-def build_sources(conn: sqlite3.Connection, question: str,
-                  companies: list[str] | None = None) -> tuple[Understood, list[dict]]:
-    """companies: the UI's company toggle, used only when the question itself names no company."""
+def build_sources(conn: sqlite3.Connection, question: str, companies: list[str] | None = None,
+                  metric: str | None = None) -> tuple[Understood, list[dict]]:
+    """companies: the UI's company toggle, used only when the question itself names no company.
+    metric: the router's choice (app/qa.py), used only when the rules found no metric in the question."""
     understood = understand(question)
+    if metric and not understood.metric:
+        understood.metric = metric
     scope = [c for c in COMPANIES if c in (companies or [])]
     if scope and not understood.named:
         understood.companies = scope

@@ -12,7 +12,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.config import ROOT, get_settings
-from app.llm import OpenAICompatLLM
+from app.llm import LLMUnavailable, OpenAICompatLLM
 from app.main import create_app
 from app.qa import parse_citations, verify_answer
 from app.retrieval import understand
@@ -64,7 +64,7 @@ def build_fixture(root: Path) -> Path:
 def settings(tmp_path):
     db = build_fixture(tmp_path)
     return replace(get_settings(), facts_db=db, reports_dir=tmp_path / "reports", log_dir=tmp_path / "logs",
-                   llm_backend="extractive")
+                   cache_dir=tmp_path / "cache", llm_backend="extractive")
 
 
 def events_of(response) -> list[tuple[str, dict]]:
@@ -186,6 +186,79 @@ def test_vllm_fails_over_to_the_safety_net_server():
                           transport=httpx.MockTransport(handler))
     assert "".join(llm.stream("system", "user")) == "Answered by the backup [1]."
     assert llm.last_url == "http://ramanujan:8001/v1"
+
+
+def test_each_server_gets_its_own_model_name():
+    seen = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append((request.url.host, json.loads(request.content)["model"]))
+        if request.url.host == "ramanujan":
+            raise httpx.ConnectError("refused", request=request)
+        return httpx.Response(200, json={"choices": [{"message": {"content": "{}"}}]})
+
+    llm = OpenAICompatLLM("http://ramanujan:8001/v1,http://sustain:8002/v1", "qwen3-30b-a3b,qwen3-4b",
+                          transport=httpx.MockTransport(handler))
+    assert llm.complete([{"role": "user", "content": "plan"}]) == "{}"
+    assert seen == [("ramanujan", "qwen3-30b-a3b"), ("sustain", "qwen3-4b")] and llm.last_model == "qwen3-4b"
+    with pytest.raises(ValueError):
+        OpenAICompatLLM("http://a/v1,http://b/v1,http://c/v1", "one,two")
+
+
+class CountingLLM(FakeLLM):
+    """Counts answers (stream) and router plans (complete); without a plan reply the router finds no server."""
+
+    def __init__(self, pieces, plan_reply=None):
+        super().__init__(pieces)
+        self.plan_reply, self.calls, self.plan_calls = plan_reply, 0, 0
+
+    def stream(self, system, user):
+        self.calls += 1
+        yield from self.pieces
+
+    def complete(self, messages, max_tokens=80, timeout_s=20.0):
+        self.plan_calls += 1
+        if self.plan_reply is None:
+            raise LLMUnavailable("no router here")
+        return self.plan_reply
+
+
+ANSWER = ["Infosys reports voluntary attrition of 14.1% [1]."]
+
+
+def test_model_answers_are_cached_and_replayed(settings):
+    llm = CountingLLM(ANSWER)
+    client = TestClient(create_app(settings, llm=llm))
+    first, again = ask(client, MODEL_QUESTION), ask(client, "  " + MODEL_QUESTION.upper())
+    final = [next(d for e, d in events if e == "final") for events in (first, again)]
+    assert llm.calls == 1 and final[0] == final[1] and done_of(again)["status"] == "answered"
+    assert done_of(again)["cached"] and "cached" not in done_of(first)
+    client.post("/api/ask", json={"question": MODEL_QUESTION, "use_cache": False})
+    assert llm.calls == 2   # the evaluation asks afresh
+
+
+def test_router_maps_unrecognised_wording_to_a_metric(settings):
+    llm = CountingLLM(["this must not be used"], plan_reply='{"show": ["chart"], "metrics": ["attrition"], "chart": "bar"}')
+    client = TestClient(create_app(settings, llm=llm))
+    for _ in range(2):
+        events = ask(client, "plot how many people quit Infosys")
+        understood = events[0][1]["understood"]
+        assert understood["metric"] == "attrition" and understood["plan"]["chart"] == "bar"
+        assert next(d for e, d in events if e == "final")["answer"] == "Infosys attrition, FY2025-26: 14.1% [1]."
+        assert done_of(events)["backend"] == "facts"
+    assert (llm.plan_calls, llm.calls) == (1, 0)   # the second time the plan comes from the cache
+
+
+@pytest.mark.parametrize("question, reply, plan_calls", [
+    ("Infosys attrition chart", '{"metrics": ["attrition"]}', 0),                    # the rules know the metric
+    ("plot dividend per share of Infosys", '{"metrics": ["dividend_per_share"]}', 1),  # not on the list: dropped
+    ("plot dividend per share of Infosys", "Dividends were 48 per share.", 1),       # an answer, not a plan
+])
+def test_router_never_overrides_rules_or_invents_metrics(settings, question, reply, plan_calls):
+    llm = CountingLLM(ANSWER, plan_reply=reply)
+    understood = ask(TestClient(create_app(settings, llm=llm)), question)[0][1]["understood"]
+    assert "plan" not in understood and llm.plan_calls == plan_calls
+    assert understood["metric"] == ("attrition" if "attrition" in question else None)
 
 
 def test_vllm_unreachable_falls_back_to_extractive(settings):

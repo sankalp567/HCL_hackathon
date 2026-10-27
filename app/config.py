@@ -14,6 +14,7 @@ class Settings:
     facts_db: Path
     reports_dir: Path
     log_dir: Path
+    cache_dir: Path             # router plans and checked model answers (app/cache.py)
     llm_backend: str            # 'extractive' | 'transformers' | 'vllm'
     llm_model_path: Path        # transformers: local model directory
     llm_device: str             # transformers: torch device
@@ -36,6 +37,7 @@ def get_settings() -> Settings:
         facts_db=_repo_path("FACTS_DB", "data/facts.db"),
         reports_dir=_repo_path("REPORTS_DIR", "data/reports"),
         log_dir=_repo_path("LOG_DIR", "data/logs"),
+        cache_dir=_repo_path("CACHE_DIR", "data/cache"),
         llm_backend=backend,
         llm_model_path=Path(os.environ.get("LLM_MODEL_PATH", "~/work/hcl_extract/llm/Qwen3-4B-Instruct-2507")).expanduser(),
         llm_device=os.environ.get("LLM_DEVICE", "cuda:0"),

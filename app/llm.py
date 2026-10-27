@@ -139,12 +139,38 @@ class OpenAICompatLLM:
 
     def __init__(self, base_url: str, model: str, api_key: str | None = None, timeout_s: float = 60.0,
                  transport: httpx.BaseTransport | None = None):
-        # one URL, or a comma-separated list tried in order (primary sustain, then the ramanujan safety net)
+        # one URL, or a comma-separated list tried in order (primary first, then the fallback), and one model name
+        # for all of them or one per URL when the servers host different models (ramanujan 30B, sustain 4B)
         self.base_urls = [u.strip().rstrip("/") for u in base_url.split(",") if u.strip()]
         self.base_url = self.base_urls[0]
-        self.model, self.api_key = model, api_key
+        names = [m.strip() for m in model.split(",") if m.strip()]
+        if len(names) not in (1, len(self.base_urls)):
+            raise ValueError("LLM_MODEL: give one model name, or one per LLM_BASE_URL entry")
+        self.models = dict(zip(self.base_urls, names * len(self.base_urls) if len(names) == 1 else names))
+        self.model, self.api_key = names[0], api_key
         self.timeout, self.transport = timeout_s, transport
         self.last_url: str | None = None  # the server that answered last
+
+    @property
+    def last_model(self) -> str | None:
+        return self.models.get(self.last_url)
+
+    def complete(self, messages: list[dict], max_tokens: int = 80, timeout_s: float = 20.0) -> str:
+        """One short reply, not streamed (the router's plan), trying the servers in the same order as stream()."""
+        headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
+        errors = []
+        for url in self.base_urls:
+            body = {"model": self.models[url], "temperature": 0, "max_tokens": max_tokens, "messages": messages}
+            try:
+                with httpx.Client(timeout=timeout_s, transport=self.transport) as client:
+                    resp = client.post(f"{url}/chat/completions", json=body, headers=headers)
+                if resp.status_code == 200:
+                    self.last_url = url
+                    return resp.json()["choices"][0]["message"]["content"] or ""
+                errors.append(f"{url} answered HTTP {resp.status_code}")
+            except (httpx.HTTPError, ValueError, KeyError, IndexError) as exc:
+                errors.append(f"{url}: {exc!r}")
+        raise LLMUnavailable("; ".join(errors))
 
     def stream(self, system: str, user: str) -> Iterator[str]:
         """Try each server in order; move on only if one fails before sending any text."""
@@ -153,7 +179,8 @@ class OpenAICompatLLM:
             started = False
             try:
                 for piece in self._stream_from(url, system, user):
-                    started = True
+                    if not started:   # set now: a reply cut short (NOT_FOUND) still names its server
+                        started, self.last_url = True, url
                     yield piece
                 self.last_url = url
                 return
@@ -165,7 +192,7 @@ class OpenAICompatLLM:
 
     def _stream_from(self, base_url: str, system: str, user: str) -> Iterator[str]:
         headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
-        body = {"model": self.model, "stream": True, "temperature": 0, "max_tokens": MAX_NEW_TOKENS,
+        body = {"model": self.models[base_url], "stream": True, "temperature": 0, "max_tokens": MAX_NEW_TOKENS,
                 "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
         try:
             with httpx.Client(timeout=self.timeout, transport=self.transport) as client:

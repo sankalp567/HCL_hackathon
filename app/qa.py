@@ -13,9 +13,10 @@ from contextlib import closing
 from datetime import datetime, timezone
 from pathlib import Path
 
+from app.cache import Cache, normalise
 from app.config import Settings
 from app.db import connect
-from app.llm import LLM, ExtractiveLLM
+from app.llm import LLM, ExtractiveLLM, LLMUnavailable
 from app.retrieval import COMPANIES, build_sources, mentions_fy, understand
 from extract.numbers import format_value
 
@@ -50,6 +51,60 @@ OTHER_COMPANIES = re.compile(r"\b(wipro|accenture|cognizant|tech\s*mahindra|ltim
 NOT_COVERED = "Not found in the reports: only the TCS, Infosys and HCLTech annual reports are covered."
 TERMS = {"revenue": "revenue from operations", "revenue_usd": "revenue (US$)", "net_profit": "net profit",
          "operating_margin": "operating margin", "headcount": "employees", "attrition": "attrition"}
+
+
+ROUTER_PROMPT = """Classify a question about the TCS, Infosys and HCLTech annual reports. Do not answer it.
+Reply with one JSON object and nothing else:
+{"show": [any of "text", "chart", "table"], "metrics": [metric, ...], "chart": "auto" | "bar" | "line" | "pie"}
+metric: one of revenue, revenue_usd, net_profit, operating_margin, headcount, attrition (operating_margin includes EBIT margin, attrition includes turnover rate, headcount means employees).
+Use "chart" or "table" only for those metrics; for anything else reply "metrics": [] and "show": ["text"].
+Add "text" when the question asks why, how, or what a report says."""
+ROUTER_EXAMPLES = [
+    ("Compare revenue of TCS and Infosys", {"show": ["chart"], "metrics": ["revenue"], "chart": "auto"}),
+    ("Why did HCLTech's margin change?", {"show": ["chart", "text"], "metrics": ["operating_margin"], "chart": "auto"}),
+    ("What does TCS say about AI?", {"show": ["text"], "metrics": [], "chart": "auto"}),
+    ("Table of net profit and employees for FY26",
+     {"show": ["table"], "metrics": ["net_profit", "headcount"], "chart": "auto"}),
+]
+# Wording that asks for numbers or a picture: only such questions are worth a router call when the rules found no metric.
+WANTS_DATA = re.compile(r"chart|plot|graph|\bpie\b|\btables?\b|\btrend|visuali[sz]|\bcompar|\bvs\b|\bversus\b"
+                        r"|\bhow (many|much)\b|\bnumbers?\b|\bfigures?\b|\bgrowth\b|\bshare\b", re.I)
+
+
+def checked_plan(raw: object) -> dict | None:
+    """Keep only choices from the fixed lists. A plan without a known metric is no plan."""
+    if not isinstance(raw, dict):
+        return None
+    metrics = [m for m in raw.get("metrics") or [] if isinstance(m, str) and m in TERMS]
+    if not metrics:
+        return None
+    show = [s for s in raw.get("show") or [] if s in ("text", "chart", "table")] or ["chart"]
+    chart = raw.get("chart") if raw.get("chart") in ("bar", "line", "pie") else "auto"
+    return {"metric": metrics[0], "metrics": metrics, "show": show, "chart": chart}
+
+
+def route(question: str, llm: LLM, cache: Cache) -> dict | None:
+    """For a question whose wording asks for data or a chart but in which the rules found no metric ('staff numbers
+    trend for infy'), the model chooses from fixed lists which metric to show and how. The plan only selects data in
+    facts.db: the model never supplies a number. None when there is nothing to route or no usable plan, and the
+    question then goes on exactly as before."""
+    complete = getattr(llm, "complete", None)
+    if complete is None or understand(question).metric or not WANTS_DATA.search(question):
+        return None
+    key = ("plan", normalise(question), ROUTER_PROMPT, _model_id(llm))
+    cached = cache.get(key)
+    if cached is not None:
+        return cached or None
+    messages = [{"role": "system", "content": ROUTER_PROMPT}]
+    for example, plan in ROUTER_EXAMPLES:
+        messages += [{"role": "user", "content": example}, {"role": "assistant", "content": json.dumps(plan)}]
+    try:
+        reply = complete(messages + [{"role": "user", "content": question}])
+        plan = checked_plan(json.loads(re.sub(r"^```(?:json)?\s*|\s*```$", "", reply.strip())))
+    except (LLMUnavailable, ValueError):   # no server answered, or the reply was not JSON
+        return None
+    cache.put(key, plan or {})   # {} remembers "nothing to route": the same question costs no second call
+    return plan
 
 
 def _term(source: dict) -> str:
@@ -204,17 +259,81 @@ def _write_log(log_dir: Path, record: dict) -> None:
         pass  # logging must never break an answer
 
 
-def answer_events(question: str, settings: Settings, llm: LLM,
-                  companies: list[str] | None = None) -> Iterator[tuple[str, dict]]:
+_caches: dict[Path, Cache] = {}
+
+
+def cache_for(settings: Settings) -> Cache:
+    path = settings.cache_dir / "cache.jsonl"
+    if path not in _caches:
+        _caches[path] = Cache(path)
+    return _caches[path]
+
+
+def _model_id(llm: LLM) -> str:
+    models = getattr(llm, "models", None)
+    return ",".join(models.values()) if models else llm.name
+
+
+def _db_version(path: Path) -> str:
+    try:
+        stat = path.stat()
+    except OSError:
+        return "missing"
+    return f"{stat.st_mtime_ns}:{stat.st_size}"
+
+
+def _worth_storing(events: list[tuple[str, dict]], llm: LLM) -> bool:
+    """Only what cost a model call and came out whole: an answer or 'not found' from the first-choice model, with no
+    notice (fallback server, extractive fallback, early stop) and no error."""
+    kinds = {event for event, _ in events}
+    done = events[-1][1] if events and events[-1][0] == "done" else {}
+    return (not kinds & {"notice", "error"} and done.get("backend") == llm.name
+            and done.get("status") in ("answered", "not_found") and done.get("model") == getattr(llm, "model", None))
+
+
+def answer_events(question: str, settings: Settings, llm: LLM, companies: list[str] | None = None,
+                  use_cache: bool = True) -> Iterator[tuple[str, dict]]:
+    """A model answer given before to the same question (same company filter, facts.db, models and prompt) is
+    replayed from the cache; anything else is answered now, and stored when it was worth a model call."""
+    started = time.monotonic()
+    question = " ".join(question.split())
+    cache = cache_for(settings)
+    key = ("answer", normalise(question), sorted(companies or []), _db_version(settings.facts_db),
+           _model_id(llm), SYSTEM_PROMPT)
+    stored = cache.get(key) if use_cache else None
+    if stored:
+        query_id = uuid.uuid4().hex[:12]
+        for event, data in stored:
+            if event == "meta":
+                data = data | {"query_id": query_id}
+            elif event == "done":
+                data = data | {"latency_ms": int((time.monotonic() - started) * 1000), "cached": True}
+                _write_log(settings.log_dir, {"query_id": query_id, "ts": datetime.now(timezone.utc).isoformat(),
+                                              "question": question} | data)
+            yield event, data
+        return
+    events: list[tuple[str, dict]] = []
+    for event, data in _answer_events(question, settings, llm, companies, cache):
+        events.append((event, data))
+        yield event, data
+    if use_cache and _worth_storing(events, llm):
+        text = "".join(data["t"] for event, data in events if event == "token")
+        packed = [[event, data] for event, data in events if event != "token"]
+        packed.insert(1, ["token", {"t": text}])   # right after meta, as one piece
+        cache.put(key, packed)
+
+
+def _answer_events(question: str, settings: Settings, llm: LLM, companies: list[str] | None,
+                   cache: Cache) -> Iterator[tuple[str, dict]]:
     started = time.monotonic()
     query_id = uuid.uuid4().hex[:12]
-    question = " ".join(question.split())
     record: dict = {"query_id": query_id, "ts": datetime.now(timezone.utc).isoformat(), "question": question}
     backend = llm.name
 
     def done(status: str, gate: str | None = None, message: str = "") -> tuple[str, dict]:
         data = {"status": status, "message": message, "latency_ms": int((time.monotonic() - started) * 1000),
-                "backend": backend, "gate": gate}
+                "backend": backend, "gate": gate,
+                "model": getattr(llm, "last_model", None) if backend == llm.name else None}
         _write_log(settings.log_dir, record | data)
         return "done", data
 
@@ -232,11 +351,12 @@ def answer_events(question: str, settings: Settings, llm: LLM,
         if other:
             yield "notice", {"message": f"{other.group(0)} is not covered; answering for the companies that are."}
 
+        plan = route(question, llm, cache)
         with closing(connect(settings.facts_db)) as conn:
-            understood, sources = build_sources(conn, question, companies)
-        record |= {"understood": understood.as_dict(),
+            understood, sources = build_sources(conn, question, companies, metric=plan["metric"] if plan else None)
+        record |= {"understood": understood.as_dict(), "plan": plan,
                    "sources": [{k: s[k] for k in ("n", "kind", "doc_id", "page", "score")} for s in sources]}
-        yield "meta", {"query_id": query_id, "understood": understood.as_dict(),
+        yield "meta", {"query_id": query_id, "understood": understood.as_dict() | ({"plan": plan} if plan else {}),
                        "sources": [{k: s[k] for k in ("n", "company", "report", "pdf", "doc_id", "page", "kind", "score")}
                                    for s in sources]}
 

@@ -229,8 +229,9 @@ class Answer {
     if (done.status === "answered") {
       const cited = this.citations.length;
       const verified = this.citations.filter((c) => c.verified).length;
+      const by = [BACKENDS[done.backend] || done.backend, done.model, done.cached ? "cached answer" : null].filter(Boolean).join(" · ");
       this.meta.replaceChildren(icon("check"),
-        `${cited} source${cited === 1 ? "" : "s"} cited, ${verified} with matching numbers · ${BACKENDS[done.backend] || done.backend} · ${took}`);
+        `${cited} source${cited === 1 ? "" : "s"} cited, ${verified} with matching numbers · ${by} · ${took}`);
       if (this.understood?.metric) this.addMetricCard();
       return;
     }

@@ -42,7 +42,7 @@ def digits_of(text: str) -> str:
 def ask(client: httpx.Client, url: str, question: str) -> dict:
     result = {"tokens": "", "final": None, "citations": [], "done": None, "meta": None}
     started = time.monotonic()
-    with client.stream("POST", f"{url}/api/ask", json={"question": question}, timeout=180) as response:
+    with client.stream("POST", f"{url}/api/ask", json={"question": question, "use_cache": False}, timeout=180) as response:
         event = None
         for line in response.iter_lines():
             if line.startswith("event: "):
