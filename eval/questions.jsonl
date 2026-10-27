@@ -1,0 +1,31 @@
+{"id": "L01", "type": "lookup", "question": "What was TCS's revenue from operations in FY2025-26?", "expect": "answered", "numbers": [["2,67,021"]]}
+{"id": "L02", "type": "lookup", "question": "What was Infosys's revenue in FY2025-26?", "expect": "answered", "numbers": [["1,78,650"]]}
+{"id": "L03", "type": "lookup", "question": "What was HCLTech's revenue in FY2025-26?", "expect": "answered", "numbers": [["130,144"]]}
+{"id": "L04", "type": "lookup", "question": "What was TCS's revenue in FY2024-25?", "expect": "answered", "numbers": [["2,55,324"]]}
+{"id": "L05", "type": "lookup", "question": "What was Infosys's net profit in FY2025-26?", "expect": "answered", "numbers": [["29,440"]]}
+{"id": "L06", "type": "lookup", "question": "What was HCLTech's net profit in FY2025-26?", "expect": "answered", "numbers": [["16,652", "16,642"]]}
+{"id": "L07", "type": "lookup", "question": "What was TCS's net profit in FY2025-26?", "expect": "answered", "numbers": [["49,210"]]}
+{"id": "L08", "type": "lookup", "question": "What was TCS's operating margin in FY2025-26?", "expect": "answered", "numbers": [["25.0"]]}
+{"id": "L09", "type": "lookup", "question": "What was HCLTech's EBIT margin in FY2025-26?", "expect": "answered", "numbers": [["17.2"]]}
+{"id": "L10", "type": "lookup", "question": "What was Infosys's operating margin in FY2025-26?", "expect": "answered", "numbers": [["20.3"]]}
+{"id": "L11", "type": "lookup", "question": "How many employees did TCS have at the end of FY2025-26?", "expect": "answered", "numbers": [["6,17,437"]]}
+{"id": "L12", "type": "lookup", "question": "What was Infosys's headcount in FY2025-26?", "expect": "answered", "numbers": [["3,52,095", "3,51,630"]]}
+{"id": "L13", "type": "lookup", "question": "What was HCLTech's attrition in FY2025-26?", "expect": "answered", "numbers": [["12.51"]]}
+{"id": "L14", "type": "lookup", "question": "What was Infosys's voluntary attrition in FY2025-26?", "expect": "answered", "numbers": [["12.6"]]}
+{"id": "C01", "type": "compare", "question": "Compare the revenue of TCS, Infosys and HCLTech in FY2025-26.", "expect": "answered", "numbers": [["2,67,021"], ["1,78,650"], ["130,144"]]}
+{"id": "C02", "type": "compare", "question": "Compare the operating margins of the three companies.", "expect": "answered", "numbers": [["25.0"], ["20.3"], ["17.2"]]}
+{"id": "C03", "type": "compare", "question": "Compare the headcount of TCS, Infosys and HCLTech.", "expect": "answered", "numbers": [["6,17,437"], ["3,52,095", "3,51,630"], ["2,37,098", "237,098"]]}
+{"id": "C04", "type": "compare", "question": "Which company had the highest net profit in FY2025-26?", "expect": "answered", "numbers": [["49,210"]]}
+{"id": "D01", "type": "descriptive", "question": "How does HCLTech describe its GenAI investments?", "expect": "answered", "terms": ["AI"]}
+{"id": "D02", "type": "descriptive", "question": "What does TCS say about its AI strategy?", "expect": "answered", "terms": ["AI"]}
+{"id": "D03", "type": "descriptive", "question": "How does Infosys describe its large deal wins in FY2025-26?", "expect": "answered", "terms": ["deal"]}
+{"id": "D04", "type": "descriptive", "question": "What key risks does Infosys highlight?", "expect": "answered", "terms": ["risk"]}
+{"id": "D05", "type": "descriptive", "question": "What dividend per share did Infosys declare for FY2025-26?", "expect": "answered", "numbers": [["48"]]}
+{"id": "D06", "type": "descriptive", "question": "How many US$50 million+ clients did Infosys have in FY2025-26?", "expect": "answered", "numbers": [["88"]]}
+{"id": "D07", "type": "descriptive", "question": "What was the large deal TCV of Infosys in FY2025-26?", "expect": "answered", "numbers": [["14.9"]]}
+{"id": "U01", "type": "unanswerable", "question": "What was TCS's revenue in FY2029-30?", "expect": "not_found"}
+{"id": "U02", "type": "unanswerable", "question": "What is the favourite cricket team of the TCS CEO?", "expect": "not_found"}
+{"id": "U03", "type": "unanswerable", "question": "What was Wipro's revenue in FY2025-26?", "expect": "not_found"}
+{"id": "U04", "type": "unanswerable", "question": "How many employees does HCLTech plan to hire in FY2030?", "expect": "not_found"}
+{"id": "O01", "type": "out_of_scope", "question": "Should I buy Infosys shares?", "expect": "out_of_scope"}
+{"id": "O02", "type": "out_of_scope", "question": "What will TCS's share price be next year?", "expect": "out_of_scope"}
