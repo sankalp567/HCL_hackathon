@@ -24,9 +24,17 @@ def test_parse_number(text, expected):
 
 
 @pytest.mark.parametrize("text", ["-", "—", "", "Revenue", "1.2x", "Nil", "FY 2026 vs FY 2025",
-                                  "97 5", "13."])   # TCS text layer lost the decimal point / a digit
+                                  "97 5", "13.",       # TCS text layer lost the decimal point / a digit
+                                  "2, 1, 423"])        # TCS p. 167: printed 2,71,423, the '7' is missing
 def test_parse_number_rejects_non_numbers(text):
     assert parse_number(text) is None
+
+
+@pytest.mark.parametrize("text, expected", [("2, 59, 286", 259286.0), ("6, 17 437", 617437.0), ("(1, 234)", -1234.0)])
+def test_parse_number_repairs_only_valid_groups(text, expected):
+    assert parse_number(text) == (expected, False)
+
+
 
 
 def test_printed_number():

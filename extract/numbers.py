@@ -24,12 +24,15 @@ def parse_number(text: str) -> tuple[float, bool] | None:
         return None  # '97 5': digits split by a space with nothing to say how they join
     s = spaced.replace(" ", "")
     if not _NUMBER.match(s):
-        # TCS's text layer letter-spaces some digits: '6, 17 437' is 6,17,437. Repair only when commas
-        # show it is one number; '97 5' (a lost decimal point) stays unreadable.
-        digits = s.replace(",", "")
-        if not ("," in s and " " in spaced and re.fullmatch(r"\(?-?\d{4,9}\)?", digits)):
+        # TCS's text layer letter-spaces some digits and drops some glyphs: '6, 17 437' is 6,17,437 (a lost comma),
+        # but '2, 1, 423' is 2,71,423 with a lost '7'. Repair only when the pieces form valid digit groups.
+        groups = [g for g in re.split(r"[,\s]+", spaced.strip("()- ")) if g]
+        indian = len(groups) >= 2 and len(groups[0]) <= 2 and all(len(g) == 2 for g in groups[1:-1]) \
+            and len(groups[-1]) == 3
+        western = len(groups) >= 2 and len(groups[0]) <= 3 and all(len(g) == 3 for g in groups[1:])
+        if not ("," in s and " " in spaced and all(g.isdigit() for g in groups) and (indian or western)):
             return None
-        s = digits
+        s = s[0] * s.startswith(("-", "(")) + "".join(groups) + ")" * s.endswith(")")
     negative = s.startswith("-") or (s.startswith("(") and s.endswith(")"))
     value = float(s.strip("()-").replace(",", ""))
     return (-value if negative else value), is_percent
