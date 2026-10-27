@@ -14,7 +14,7 @@ COMPANIES = {  # canonical name -> how people write it
 }
 METRICS = [  # first match wins, so the more specific phrases come first
     ("operating_margin", re.compile(r"operating (profit )?margin|ebit margin|\bebit\b", re.I)),
-    ("net_profit", re.compile(r"net profit|profit after tax|\bpat\b|net income|profit for the year", re.I)),
+    ("net_profit", re.compile(r"net profit|profit after tax|\bpat\b|net income|profit for the year|profit attributable", re.I)),
     ("attrition", re.compile(r"attrition|turnover", re.I)),
     ("headcount", re.compile(r"head\s?count|employees|employee (head|count|strength)|workforce|staff strength", re.I)),
     ("revenue", re.compile(r"revenue|\bsales\b|top[- ]line", re.I)),

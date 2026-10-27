@@ -47,6 +47,9 @@ SENTENCE_BREAK = re.compile(r"((?<=[.!?])\s+|\n+)")
 EXPLAIN = re.compile(r"\b(why|explain|describe|reasons?|drivers?|factors?|impact|strategy|what (drove|caused|led))\b"
                      r"|\bhow\b(?!\s+(many|much))", re.I)   # 'how many employees' is still a lookup
 HOW_MANY = re.compile(r"\bhow (many|much)\b", re.I)
+UNIT_ASKED = re.compile(r"\(in\s*(?:₹|rs\.?|inr|%|us\$|usd|crore)", re.I)   # '(in ₹ crore)', '(in %)'
+# a metric qualified like this is not the template's consolidated, reported, full-year value
+QUALIFIED = re.compile(r"\b(adjusted|standalone|constant currency|segment|quarter|q[1-4])\b", re.I)
 OTHER_COMPANIES = re.compile(r"\b(wipro|accenture|cognizant|tech\s*mahindra|ltimindtree|mphasis|capgemini|ibm|"
                              r"persistent systems|coforge|hexaware|deloitte)\b", re.I)
 NOT_COVERED = "Not found in the reports: only the TCS, Infosys and HCLTech annual reports are covered."
@@ -86,7 +89,7 @@ CHECK_EXAMPLES = [
 # The check's metric stands in for the rules' only when the wording asks for numbers or a picture ('staff numbers trend
 # for infy'). Elsewhere a related metric answers a different question: 'large deal TCV' is not revenue.
 WANTS_DATA = re.compile(r"chart|plot|graph|\bpie\b|\btables?\b|\btrend|visuali[sz]|\bcompar|\bvs\b|\bversus\b"
-                        r"|\bhow (many|much)\b|\bnumbers?\b|\bfigures?\b|\bgrowth\b|\bshare\b", re.I)
+                        r"|\bhow (many|much)\b|\bnumbers?\b|\bfigures?\b|\bgrowth\b|(?<!per )\bshare of\b", re.I)   # not "per share (of)"
 
 
 def checked(raw: object) -> dict | None:
@@ -410,7 +413,8 @@ def _answer_events(question: str, settings: Settings, llm: LLM, companies: list[
         out: list[str] = []
         # a part of a metric ('revenue from North America') or something computed from it ('growth') is not the
         # template's company-wide value: the model answers it from the sources, or says it is not found
-        templated = fact_answer(question, understood, sources) if not check or check["whole"] else None
+        whole = (not check or check["whole"]) and not QUALIFIED.search(question)
+        templated = fact_answer(question, understood, sources) if whole else None
         if templated:  # a metric lookup or comparison: answered from facts.db, no model call
             backend = "facts"
             out.append(templated)
@@ -438,7 +442,8 @@ def _answer_events(question: str, settings: Settings, llm: LLM, companies: list[
             return
         answer, sentences = verify_answer(answer, sources)
         record["sentences"] = sentences
-        if (backend != "facts" and (understood.metric or HOW_MANY.search(question)) and not EXPLAIN.search(question)
+        if (backend != "facts" and (understood.metric or HOW_MANY.search(question) or UNIT_ASKED.search(question))
+                and not EXPLAIN.search(question)
                 and not _numbers(answer, drop_years=True)):
             # a figure was asked for and the checked answer gives none ('the report presents revenue in crore [4]')
             yield done("not_found", "no_figure", f"Not found in the reports: no figure answers this question. {searched}")

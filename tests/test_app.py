@@ -254,6 +254,7 @@ def test_router_maps_unrecognised_wording_to_a_metric(settings):
     ("plot dividend per share of Infosys", '{"metrics": ["dividend_per_share"]}'),  # not on the list: dropped
     ("plot dividend per share of Infosys", "Dividends were 48 per share."),       # an answer, not a plan
     ("What was the large deal value of Infosys?", '{"metrics": ["attrition"]}'),  # no data wording: not mapped
+    ("What was the earnings per share of Infosys?", '{"metrics": ["attrition"]}'),  # 'per share' is not data wording
 ])
 def test_router_never_overrides_rules_or_invents_metrics(settings, question, reply):
     llm = CountingLLM(ANSWER, plan_reply=reply)
@@ -287,6 +288,18 @@ def test_an_answer_without_the_asked_figure_is_not_found(settings):
     llm = CountingLLM(["The report presents attrition for the year [1]."], plan_reply='{"metrics": ["attrition"], "part": true}')
     done = done_of(ask(TestClient(create_app(settings, llm=llm)), "What was Infosys's attrition in Bengaluru in FY2025-26?"))
     assert (done["status"], done["gate"]) == ("not_found", "no_figure") and llm.calls == 1
+
+
+def test_a_qualified_metric_is_answered_by_the_model_not_the_template(settings):
+    llm = CountingLLM(ANSWER)
+    events = ask(TestClient(create_app(settings, llm=llm)), "What was Infosys's adjusted attrition in FY2025-26?")
+    assert done_of(events)["backend"] == "fake" and llm.calls == 1
+
+
+def test_a_unit_asked_for_needs_a_figure_in_the_answer(settings):
+    llm = CountingLLM(["TCS grew on the back of large deals [1]."])
+    done = done_of(ask(TestClient(create_app(settings, llm=llm)), "What was TCS's growth on large deals (in %)?"))
+    assert (done["status"], done["gate"]) == ("not_found", "no_figure")
 
 
 @pytest.mark.parametrize("flag", ["part", "computed"])
@@ -358,6 +371,7 @@ def test_metric_lookup_is_answered_from_facts_without_the_model(settings):
     ("How many employees does TCS have?", "headcount"),
     ("Compare operating margins", "operating_margin"),
     ("Show net profit comparison", "net_profit"),
+    ("What was the consolidated profit attributable to shareholders of TCS?", "net_profit"),
 ])
 def test_understand_finds_the_metric(question, metric):
     assert understand(question).metric == metric
