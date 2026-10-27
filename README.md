@@ -47,8 +47,9 @@ uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python -r requi
 # backend + UI on http://127.0.0.1:8000, answers from facts and extracts only (no model needed)
 .venv/bin/python -m uvicorn app.main:app --port 8000
 
-# with the self-hosted model: on the GPU server, from serve/ (settings in run.json, see serve/run.py)
-python run.py
+# with the self-hosted model: on the GPU server, copy serve/run.py, serve/hf_server.py and a run.json
+# (serve/run.sustain.json is ours: engine "transformers", GPU 1, port 8002; engine "vllm" also works), then
+python run.py          # shows up in ps / nvidia-smi only as `python run.py`
 # on the laptop: tunnel to it and point the backend at it
 ssh -N -L 8002:127.0.0.1:8002 <gpu-server>
 LLM_BACKEND=vllm LLM_BASE_URL=http://127.0.0.1:8002/v1 LLM_MODEL=qwen3-4b .venv/bin/python -m uvicorn app.main:app --port 8000
