@@ -1,8 +1,10 @@
 {
   "engine": "vllm",
   "venv": "/home/balbir.prasad/hcl_llm/.venv-vllm011",
+  "model": "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8",
+  "served_name": "qwen3-30b-a3b",
   "gpu": "3",
   "port": 8001,
-  "gpu_memory_utilization": 0.2,
-  "max_model_len": 8192
+  "gpu_memory_utilization": 0.55,
+  "max_model_len": 16384
 }
