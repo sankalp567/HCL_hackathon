@@ -32,7 +32,7 @@ question ─► scope guard ─► facts lookup + keyword search ─► answer �
 | Numeric answers with the expected numbers | 20/21 (95%) |
 | Descriptive answers mentioning the expected subject | 4/4 |
 | Numeric claims whose numbers are on a cited PDF page | 35/35 (100%) |
-| Latency p50 / p95 | ≈0 s (answered from facts) / 6.6 s (model) |
+| Latency p50 / p95 | ≈0 s (answered from facts) / 4.5 s (model) |
 
 The miss: asked for Infosys's dividend per share, the model gave the final dividend (₹25, correctly cited) instead of the year's total (₹48). Full table: [`eval/results.md`](eval/results.md).
 
@@ -56,7 +56,7 @@ ssh -N -L 8002:127.0.0.1:8002 sustain &   ssh -N -L 8001:127.0.0.1:8001 ramanuja
 LLM_BACKEND=vllm LLM_BASE_URL="http://127.0.0.1:8002/v1,http://127.0.0.1:8001/v1" LLM_MODEL=qwen3-4b \
   .venv/bin/python -m uvicorn app.main:app --port 8000
 
-.venv/bin/python -m pytest -q          # 86 tests
+.venv/bin/python -m pytest -q          # 91 tests
 .venv/bin/python eval/run_eval.py      # against a running backend; writes eval/results.md
 ```
 
@@ -82,7 +82,7 @@ Only these three reports are used; no news, broker notes or websites.
 6. TCS's text layer damages numbers ("6, 17 437", "97 5", "13."). We repair only what commas prove ("6, 17 437" = 6,17,437 = 5,84,519 + 32,918); the rest is left unread rather than guessed, so TCS's FY26 attrition is missing.
 7. A header row Docling did not mark mixed up standalone and consolidated margins for Infosys (21.9% vs 20.3%), and a section heading leaked a "discount rate" into operating margin. Fixed header and label handling.
 8. The model refused "Infosys voluntary attrition" although the fact was retrieved: the defining footnote was not attached and the context was clipped. Attaching table footnotes fixed it.
-9. vLLM 0.32 ships PyTorch for CUDA 13; the servers' driver supports CUDA 12.8. Pinned vLLM 0.11.0.
+9. vLLM 0.32 ships PyTorch for CUDA 13; the servers' driver supports CUDA 12.8. Pinned vLLM 0.11.0, and transformers below 5 (vLLM 0.11 calls a tokenizer method that transformers 5 removed).
 10. The evaluation found four more bugs (an uncovered company answered, "how many" sent to the model, a correct line removed by the checker, the dividend miss); three are fixed.
 
 ## Team
