@@ -3,52 +3,154 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>IT Annual Reports Q&amp;A</title>
+  <title>Annual Report AI</title>
+  <link rel="icon" href="data:,">
   <link rel="stylesheet" href="style.css">
+  <!-- Chart.js 4.4.1 (MIT), vendored so the page makes no CDN calls. -->
+  <script src="vendor/chart.umd.min.js" defer></script>
+  <script type="module" src="js/main.js"></script>
 </head>
 <body>
-  <header class="top">
-    <h1>IT Annual Reports FY2025-26 · TCS · Infosys · HCLTech</h1>
-    <p>Answers come only from the three annual reports, with the PDF page behind every claim.</p>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="topbar">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+        <rect width="32" height="32" rx="9" fill="#4F46E5"/>
+        <path d="M10 8.5h8.5l4 4V23a1.5 1.5 0 0 1-1.5 1.5H10A1.5 1.5 0 0 1 8.5 23V10A1.5 1.5 0 0 1 10 8.5z" fill="#fff"/>
+        <path d="M12 20.5v-2.5M15 20.5v-5M18 20.5v-3.5" stroke="#4F46E5" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>
+      <div>
+        <p class="brand-name">Annual Report AI</p>
+        <p class="brand-sub">TCS · Infosys · HCLTech · FY2025-26 annual reports</p>
+      </div>
+    </div>
+
+    <div class="filters">
+      <div class="segmented" role="group" aria-label="Companies shown">
+        <button type="button" class="seg" data-company="TCS" aria-pressed="true"><span class="seg-mark" data-icon="tick"></span>TCS</button>
+        <button type="button" class="seg" data-company="Infosys" aria-pressed="true"><span class="seg-mark" data-icon="tick"></span>Infosys</button>
+        <button type="button" class="seg" data-company="HCLTech" aria-pressed="true"><span class="seg-mark" data-icon="tick"></span>HCLTech</button>
+      </div>
+      <label class="select-wrap year-select">
+        <span class="select-label">Financial year</span>
+        <select id="year-filter">
+          <option value="FY2025-26">FY2025-26</option>
+          <option value="FY2024-25">FY2024-25</option>
+          <option value="all">All available years</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="topbar-end">
+      <span class="pill" id="reports-pill"><span class="pill-dot"></span><span id="reports-pill-text">Loading reports…</span></span>
+      <button type="button" class="btn btn-ghost panel-toggle" id="panel-toggle" aria-controls="panel" aria-expanded="true">
+        Evidence <span class="count" id="panel-count">0</span>
+      </button>
+    </div>
   </header>
 
-  <div class="layout">
-    <main>
-      <form id="ask-form" class="ask" autocomplete="off">
-        <label for="question" class="visually-hidden">Your question</label>
-        <input id="question" name="question" type="text" maxlength="500"
-               placeholder="Ask about the three annual reports…" required>
-        <button id="ask-button" type="submit">Ask</button>
+  <nav class="sidebar" aria-label="Views">
+    <a class="nav-item" href="#ask" data-view="ask"><span class="nav-icon" data-icon="chat"></span><span>Ask AI</span></a>
+    <a class="nav-item" href="#dashboard" data-view="dashboard"><span class="nav-icon" data-icon="grid"></span><span>Dashboard</span></a>
+    <a class="nav-item" href="#compare" data-view="compare"><span class="nav-icon" data-icon="bars"></span><span>Compare Companies</span></a>
+    <a class="nav-item" href="#data" data-view="data"><span class="nav-icon" data-icon="table"></span><span>Extracted Data</span></a>
+    <a class="nav-item" href="#explorer" data-view="explorer"><span class="nav-icon" data-icon="search"></span><span>Evidence Explorer</span></a>
+    <a class="nav-item nav-bottom" href="#settings" data-view="settings"><span class="nav-icon" data-icon="sliders"></span><span>Settings</span></a>
+  </nav>
+
+  <main id="main" tabindex="-1">
+    <!-- Ask AI: chat thread on top, question box pinned to the bottom. -->
+    <section class="view view-ask" id="view-ask" data-view="ask" aria-labelledby="ask-title">
+      <h1 class="visually-hidden" id="ask-title">Ask AI</h1>
+      <div class="thread" id="thread">
+        <div class="welcome card" id="welcome">
+          <h2>Ask about the FY2025-26 annual reports</h2>
+          <p>Answers come only from the TCS, Infosys and HCLTech annual reports. Every figure links to the page it came from, shown on the right.</p>
+        </div>
+      </div>
+      <div class="composer-wrap">
+        <form class="composer" id="ask-form" autocomplete="off">
+          <label for="question" class="visually-hidden">Your question</label>
+          <input id="question" name="question" type="text" maxlength="500" placeholder="Ask anything about the annual reports…" required>
+          <button type="submit" class="send" id="ask-button" aria-label="Ask"><span data-icon="send"></span></button>
+        </form>
+        <p class="scope-hint" id="scope-hint" hidden></p>
+        <div class="suggestions" id="suggestions" aria-label="Example questions"></div>
+      </div>
+    </section>
+
+    <section class="view" id="view-dashboard" data-view="dashboard" aria-labelledby="dashboard-title" hidden>
+      <header class="view-head">
+        <h1 id="dashboard-title">Dashboard</h1>
+        <p class="view-sub" id="dashboard-sub">Key figures from each report. Select a value to see the page it came from.</p>
+      </header>
+      <div id="dashboard-body"></div>
+    </section>
+
+    <section class="view" id="view-compare" data-view="compare" aria-labelledby="compare-title" hidden>
+      <header class="view-head">
+        <h1 id="compare-title">Compare companies</h1>
+        <p class="view-sub" id="compare-sub">One metric across the selected companies, computed only from extracted facts.</p>
+      </header>
+      <div id="compare-body"></div>
+    </section>
+
+    <section class="view" id="view-data" data-view="data" aria-labelledby="data-title" hidden>
+      <header class="view-head">
+        <h1 id="data-title">Extracted data</h1>
+        <p class="view-sub">Every value the extraction found in the three reports. Rows marked “used in charts” are the ones the charts and answers use.</p>
+      </header>
+      <div id="data-body"></div>
+    </section>
+
+    <section class="view" id="view-explorer" data-view="explorer" aria-labelledby="explorer-title" hidden>
+      <header class="view-head">
+        <h1 id="explorer-title">Evidence explorer</h1>
+        <p class="view-sub">Search the text and tables of the three reports, then open any result at its page.</p>
+      </header>
+      <form class="search-form" id="search-form" role="search" autocomplete="off">
+        <label for="search-input" class="visually-hidden">Search the reports</label>
+        <span class="search-icon" data-icon="search"></span>
+        <input id="search-input" type="search" maxlength="200" placeholder="Search the reports, e.g. generative AI, attrition, dividend">
+        <button type="submit" class="btn btn-primary">Search</button>
       </form>
+      <div id="explorer-body"></div>
+    </section>
 
-      <div class="examples" aria-label="Example questions">
-        <button type="button" class="chip">What was Infosys's voluntary attrition in FY2025-26?</button>
-        <button type="button" class="chip">Compare the headcount of TCS, Infosys and HCLTech.</button>
-        <button type="button" class="chip">How does HCLTech describe its GenAI investments?</button>
-        <button type="button" class="chip">What was TCS's revenue in FY2029-30?</button>
-        <button type="button" class="chip">Should I buy Infosys shares?</button>
-      </div>
+    <section class="view" id="view-settings" data-view="settings" aria-labelledby="settings-title" hidden>
+      <header class="view-head">
+        <h1 id="settings-title">Settings</h1>
+        <p class="view-sub">How this instance is set up. These values are read-only.</p>
+      </header>
+      <div id="settings-body"></div>
+    </section>
+  </main>
 
-      <section id="result" class="result" hidden>
-        <p id="status" class="status"></p>
-        <div id="notice" class="notice" hidden></div>
-        <div id="answer" class="answer" aria-live="polite"></div>
-        <ol id="citations" class="citations" aria-label="Citations"></ol>
-        <p id="footer" class="footer"></p>
-      </section>
-    </main>
+  <aside class="panel" id="panel" aria-labelledby="panel-title">
+    <div class="panel-head">
+      <h2 id="panel-title">Evidence &amp; Sources</h2>
+      <button type="button" class="icon-btn" id="panel-close" aria-label="Hide evidence panel"><span data-icon="x"></span></button>
+    </div>
+    <div class="tabs panel-tabs" id="panel-tabs" role="tablist" aria-label="Filter sources by company"></div>
+    <div class="panel-body" id="panel-body" role="tabpanel" aria-labelledby="panel-title"></div>
+  </aside>
 
-    <aside id="panel" class="panel" hidden aria-label="Cited page">
-      <div class="panel-head">
-        <h2 id="panel-title">Cited page</h2>
-        <button id="panel-close" type="button" class="close" aria-label="Close the page view">×</button>
-      </div>
-      <p id="panel-quote" class="quote"></p>
-      <a id="panel-link" class="open-pdf" target="_blank" rel="noopener">Open PDF at this page</a>
-      <img id="panel-image" alt="The cited page of the report">
-    </aside>
-  </div>
-
-  <script src="app.js"></script>
+  <dialog class="modal" id="page-modal" aria-labelledby="modal-title">
+    <div class="modal-head">
+      <span data-icon="pdf" class="pdf-icon"></span>
+      <h2 id="modal-title">Report page</h2>
+      <span class="badge" id="modal-page"></span>
+      <button type="button" class="icon-btn" id="modal-close" aria-label="Close page view"><span data-icon="x"></span></button>
+    </div>
+    <div class="modal-figure" id="modal-figure">
+      <p class="modal-loading" id="modal-loading">Rendering the page…</p>
+      <img id="modal-image" alt="">
+    </div>
+    <div class="modal-foot">
+      <p class="modal-quote" id="modal-quote"></p>
+      <a class="btn btn-outline" id="modal-pdf" target="_blank" rel="noopener"><span data-icon="external"></span><span id="modal-pdf-text">Open PDF</span></a>
+    </div>
+  </dialog>
 </body>
 </html>
