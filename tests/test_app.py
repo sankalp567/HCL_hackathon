@@ -250,6 +250,11 @@ def test_verify_answer_checks_each_sentence(answer, final, statuses):
     assert [r["status"] for r in report] == statuses
 
 
+def test_companies_we_do_not_cover_are_not_found(settings):
+    done = done_of(ask(TestClient(create_app(settings)), "What was Wipro's revenue in FY2025-26?"))
+    assert done["status"] == "not_found" and done["gate"] == "coverage"
+
+
 def test_company_toggle_scopes_only_questions_without_a_company(settings):
     client = TestClient(create_app(settings))
     scoped = client.post("/api/ask", json={"question": "What was voluntary attrition in FY2025-26?",

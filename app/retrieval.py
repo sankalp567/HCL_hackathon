@@ -5,6 +5,8 @@ import re
 import sqlite3
 from dataclasses import asdict, dataclass
 
+from extract.numbers import format_value
+
 COMPANIES = {  # canonical name -> how people write it
     "TCS": re.compile(r"\btcs\b|tata consultancy", re.I),
     "Infosys": re.compile(r"\binfosys\b|\binfy\b", re.I),
@@ -152,7 +154,9 @@ def _fact_text(f: dict) -> str:
     (e.g. Infosys's 'Turnover rate*' table whose footnote says '* Voluntary attrition for IT services')."""
     label = f.get("metric_label") or f["metric"].replace("_", " ")
     basis = f"{f['basis']}, " if f["basis"] != "unknown" else ""
-    text = f"{f['company']} · {label} · {f['fy']} ({basis}{f['unit']}). As printed: {f['quote']}"
+    # the clean value first: the printed text can be damaged (TCS prints '6, 17 437' for 6,17,437)
+    text = (f"{f['company']} · {label} · {f['fy']}: {format_value(f['value'], f['unit'])} ({basis}{f['unit']}). "
+            f"As printed: {f['quote']}")
     if f.get("source_kind") == "table" and f.get("context"):
         # only the table's title and its notes: other context lines (e.g. a previous table's footnote) mislead a
         # small model, and a clipped note was why it refused the Infosys attrition question

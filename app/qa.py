@@ -43,8 +43,11 @@ MARK = re.compile(r"\[(\d+)\]")
 NUMBER = re.compile(r"\d[\d,]*(?:\.\d+)?")
 FY_EXPR = re.compile(r"\bFY\s*'?\d{2,4}(?:\s*[-–]\s*\d{2,4})?|\b(?:19|20)\d{2}(?:\s*[-–]\s*\d{2,4})?\b", re.I)
 SENTENCE_BREAK = re.compile(r"((?<=[.!?])\s+|\n+)")
-EXPLAIN = re.compile(r"\b(why|how|explain|describe|reasons?|drivers?|factors?|impact|strategy|what (drove|caused|led))\b",
-                     re.I)
+EXPLAIN = re.compile(r"\b(why|explain|describe|reasons?|drivers?|factors?|impact|strategy|what (drove|caused|led))\b"
+                     r"|\bhow\b(?!\s+(many|much))", re.I)   # 'how many employees' is still a lookup
+OTHER_COMPANIES = re.compile(r"\b(wipro|accenture|cognizant|tech\s*mahindra|ltimindtree|mphasis|capgemini|ibm|"
+                             r"persistent systems|coforge|hexaware|deloitte)\b", re.I)
+NOT_COVERED = "Not found in the reports: only the TCS, Infosys and HCLTech annual reports are covered."
 TERMS = {"revenue": "revenue from operations", "revenue_usd": "revenue (US$)", "net_profit": "net profit",
          "operating_margin": "operating margin", "headcount": "employees", "attrition": "attrition"}
 
@@ -220,6 +223,14 @@ def answer_events(question: str, settings: Settings, llm: LLM,
             yield "meta", {"query_id": query_id, "understood": understand(question).as_dict(), "sources": []}
             yield done("out_of_scope", "scope", OUT_OF_SCOPE_MESSAGE)
             return
+
+        other = OTHER_COMPANIES.search(question)
+        if other and not understand(question).named:
+            yield "meta", {"query_id": query_id, "understood": understand(question).as_dict(), "sources": []}
+            yield done("not_found", "coverage", NOT_COVERED)
+            return
+        if other:
+            yield "notice", {"message": f"{other.group(0)} is not covered; answering for the companies that are."}
 
         with closing(connect(settings.facts_db)) as conn:
             understood, sources = build_sources(conn, question, companies)
