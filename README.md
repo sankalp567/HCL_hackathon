@@ -92,7 +92,7 @@ Only these three reports are used; no news, broker notes or websites.
 | Balbir Prasad | TODO | TODO |
 | Sankalp Turankar | 25210115 | TODO |
 | Karthik | 23110070 | TODO |
-| Avinash | 2311012 | TODO |
+| Avinash | 23110123 | TODO |
 
 ## Use of AI assistants
 
