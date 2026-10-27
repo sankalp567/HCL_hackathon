@@ -116,6 +116,19 @@ CREATE TABLE metric_dictionary (
     spec    TEXT NOT NULL                -- the metric's entry from metrics.yaml, as JSON
 );
 
+-- The one fact the chart and the Q&A use per company × metric × year × unit: consolidated before unknown before
+-- standalone, then checked status, then the most authoritative source, then the most agreement.
+CREATE VIEW best_facts AS
+SELECT * FROM (
+    SELECT f.*, ROW_NUMBER() OVER (
+        PARTITION BY company, metric, fy, unit, COALESCE(dimension, '')
+        ORDER BY CASE basis WHEN 'consolidated' THEN 0 WHEN 'unknown' THEN 1 ELSE 2 END,
+                 CASE status WHEN 'verified' THEN 0 WHEN 'corroborated' THEN 1 WHEN 'single_source' THEN 2
+                             WHEN 'conflict' THEN 3 ELSE 4 END,
+                 source_rank, agrees_with DESC, fact_id) AS choice
+    FROM facts f)
+WHERE choice = 1;
+
 CREATE INDEX idx_elements_page ON elements(doc_id, page_no);
 CREATE INDEX idx_cells_value ON table_cells(element_id) WHERE value IS NOT NULL;
 CREATE INDEX idx_facts_lookup ON facts(company, metric, fy);

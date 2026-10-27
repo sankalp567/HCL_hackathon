@@ -1,0 +1,97 @@
+# Canonical metrics, and the rules that turn report table rows into facts (extract/build_facts.py).
+#
+# Rule fields (regexes are case-insensitive; rules are tried in order, the first full match wins per cell):
+#   metric       canonical id from `metrics`
+#   row          matched against the normalised row label, then against 'section > label'
+#   not_row      vetoes the row
+#   context      must match the table context (heading, caption, lines just above the table)
+#   column       must match the column label (e.g. the 'Total' column of a BRSR table)
+#   units        accepted units; 'count' accepts numbers printed without a unit
+#   assume_unit  unit to use when only the table context (or nothing) names one
+#   range        plausible [min, max] in that unit; anything outside is ignored
+#   default_fy   a table without year columns describes the report's own year (BRSR tables)
+
+metrics:
+  revenue:          {label: Revenue from operations, unit: INR crore}
+  revenue_usd:      {label: Revenue, unit: USD million}
+  net_profit:       {label: Net profit attributable to shareholders, unit: INR crore}
+  operating_margin: {label: Operating margin (HCLTech reports EBIT margin), unit: '%'}
+  headcount:        {label: Employees, unit: count}
+  attrition:        {label: Attrition, unit: '%'}
+
+rules:
+  - metric: revenue
+    row: ['^revenues?$', '^revenue from operations$', '^total revenue from operations$', '^income from operations$']
+    not_row: ['segment', 'growth', 'per share', 'constant currency', '\bcc\b']
+    units: [INR crore]
+    range: [50000, 1000000]
+
+  - metric: revenue_usd
+    row: ['^revenues?$', '^revenue from operations$', '^total revenues?$']
+    not_row: ['segment', 'growth']
+    units: [USD million]
+    range: [5000, 100000]
+
+  - metric: net_profit
+    row:
+      - '^net profit$'
+      - '^profit for the (year|period)$'
+      - 'attributable to.* > (owners|shareholders|equity holders) of the (company|parent)$'
+      - '^profit .*attributable to (the )?(owners|shareholders|equity holders)'
+    not_row: ['before tax', 'other comprehensive', 'total comprehensive', 'non-controlling', 'growth', 'margin', 'per share', 'continuing']
+    units: [INR crore]
+    range: [5000, 200000]
+
+  - metric: operating_margin     # the reported margin; 'adjusted' figures are a different measure
+    row: ['^operating margin', '^ebit margin', '^operating profit margin']
+    not_row: ['adjusted']
+    units: ['%']
+    assume_unit: '%'
+    range: [5, 50]
+
+  - metric: headcount
+    row: ['^headcount', '^total headcount', '^number of employees', '^employees$', '^total workforce', '^employee strength', '^total employees$']
+    not_row: ['female', 'women', '\bmale', 'differently abled', 'benefit', 'cost', 'expense', 'per employee', 'percentage']
+    units: [count]
+    range: [10000, 1000000]
+
+  - metric: headcount            # BRSR 'Employees and workers' table: 'Total employees (D + E)', column 'Total (A)'
+    row: ['^total employees']
+    column: '(^|- )total'
+    units: [count]
+    range: [10000, 1000000]
+    default_fy: true
+
+  - metric: attrition
+    row: ['attrition']
+    not_row: ['involuntary']
+    units: ['%']
+    assume_unit: '%'
+    range: [1, 40]
+
+  - metric: attrition            # BRSR 'Turnover rate for permanent employees and workers': row 'Permanent employees'
+    row: ['^permanent employees$']
+    context: 'turnover'
+    column: 'total'
+    units: ['%']
+    assume_unit: '%'
+    range: [1, 40]
+
+# Sentences that state a metric (TCS and HCLTech print their margins in prose, not tables).
+# pattern needs a named group 'value'; the year comes from the sentence, else the report's year.
+text_rules:
+  - metric: operating_margin     # TCS p. 24 'reported an operating margin of 25.0%'; p. 58 'EBIT margins reached 25.0%'
+    pattern: '(?:operating|ebit)\*? margins?\*? (?:of|at|was|reached|stood at|is)\s*(?P<value>\d{1,2}(?:\.\d{1,2})?)\s?%'
+    not_text: ['services business', 'segment', 'software business', 'hclsoftware', 'adjusted', '\bers\b',
+               'engineering and r&d', 'digital business']
+    unit: '%'
+    range: [5, 50]
+  - metric: operating_margin     # HCLTech p. 8 'EBIT* was at ₹22,397 crores, at 17.2% of revenue'
+    pattern: 'ebit\*? was at ₹\s?[\d,]+ crores?, at (?P<value>\d{1,2}(?:\.\d{1,2})?)\s?% of revenue'
+    unit: '%'
+    range: [5, 50]
+  - metric: attrition
+    pattern: 'attrition[^.%]{0,80}?(?P<value>\d{1,2}(?:\.\d{1,2})?)\s?%'
+    not_text: ['involuntary', 'estimate']
+    unit: '%'
+    range: [1, 40]
